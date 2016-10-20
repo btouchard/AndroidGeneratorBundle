@@ -25,7 +25,7 @@
       "Kolapsis\\Bundle\\AndroidGeneratorBundle" : ""
     }
   },
-  "target-dir" : "Company/DemoBundle",
+  "target-dir" : "kolapsis/androidgenerator-bundle",
   "repositories" : [{
   }],
   "extra" : {
