@@ -1,0 +1,170 @@
+package {{ package }}.providers;
+
+import android.content.ContentProvider;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.UriMatcher;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+import android.support.annotation.NonNull;
+import android.util.Log;
+
+import {{ package }}.Constants;
+{% for entity in entities %}
+import {{ package }}.entity.{{ entity }};
+{% endfor %}
+import {{ package }}.helpers.DatabaseHelper;
+
+import java.io.FileNotFoundException;
+
+public class {{ provider }}Provider extends ContentProvider {
+
+	public static final String TAG 				= Constants.APP_NAME + ".{{ provider }}Provider";
+	public static final String AUTHORITY 		= Constants.AUTHORITY + ".{{ provider }}";
+
+	private static final UriMatcher sUriMatcher;
+
+	static {
+		sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+{% for entity in entities %}
+		sUriMatcher.addURI(AUTHORITY, {{ entity }}.TABLE, {{ entity }}.DIRECTORY);
+		sUriMatcher.addURI(AUTHORITY, {{ entity }}.TABLE + "/#", {{ entity }}.ITEM);
+{% endfor %}
+	}
+
+	private DatabaseHelper sql;
+
+	@Override
+	public boolean onCreate() {
+		sql = new DatabaseHelper(getContext());
+		return true;
+	}
+
+	@Override
+	public String getType(@NonNull Uri uri) {
+		switch(sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.DIRECTORY:
+			return {{ entity }}.CONTENT_TYPE;
+		case {{ entity }}.ITEM:
+			return {{ entity }}.MIME_TYPE;
+{% endfor %}
+		default: 
+			throw new IllegalArgumentException("Unknown URI " + uri);
+		}
+	}
+
+	@Override
+	public Uri insert(@NonNull Uri uri, ContentValues values) {
+		if (!isTableUri(uri)) throw new IllegalArgumentException("Unknown URI " + uri);
+		else if (values == null) throw new IllegalArgumentException("ContentValues coun't be null");
+		SQLiteDatabase db = sql.getWritableDatabase();
+		long rowId = db.insert(getTable(uri), null, values);
+		if (rowId > 0) {
+			Uri newUri = ContentUris.withAppendedId(getContentUri(uri), rowId);
+			getContext().getContentResolver().notifyChange(newUri, null);
+			return newUri;
+		}
+		throw new SQLException("Failed to insert row into " + uri);
+	}
+
+	@Override
+	public int update(@NonNull Uri uri, ContentValues values, String where, String[] whereArgs) {
+		if (!(isTableUri(uri) || isItemUri(uri))) throw new IllegalArgumentException("Unknown URI " + uri);
+		else if (values == null) throw new IllegalArgumentException("ContentValues coun't be null");
+		if (isItemUri(uri) && where == null)
+			where = "_id = " + uri.getLastPathSegment();
+		SQLiteDatabase db = sql.getWritableDatabase();
+		int count = db.update(getTable(uri), values, where, whereArgs);
+		getContext().getContentResolver().notifyChange(uri, null);
+		return count;
+	}
+
+	@Override
+	public int delete(@NonNull Uri uri, String where, String[] whereArgs) {
+		if (isItemUri(uri)) where = "_id = " + uri.getLastPathSegment();
+		SQLiteDatabase db = sql.getWritableDatabase();
+		int count = db.delete(getTable(uri), where, whereArgs);
+		getContext().getContentResolver().notifyChange(uri, null);
+		return count;
+	}
+
+	@Override
+	public Cursor query(@NonNull Uri uri, String[] projection, String where, String[] whereArgs, String sortOrder) {
+		if (isItemUri(uri)) where = "_id = " + uri.getLastPathSegment();
+		if (projection == null) projection = getProjection(uri);
+		SQLiteDatabase db = sql.getReadableDatabase();
+		Cursor c = null;
+		try {
+			c = db.query(getTable(uri), projection, where, whereArgs, null, null, sortOrder);
+			c.setNotificationUri(getContext().getContentResolver(), uri);
+		} catch (SQLiteException ignored) {}
+		return c;
+	}
+
+	@Override
+	public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
+		if (!isItemUri(uri)) throw new IllegalArgumentException("URI invalid. Use an id-based URI only.");
+		return openFileHelper(uri, mode);
+	}
+
+	private boolean isTableUri(Uri uri) {
+		switch(sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.DIRECTORY:
+			return true;
+{% endfor %}
+		default: 
+			return false;
+		}
+	}
+	private boolean isItemUri(Uri uri) {
+		switch(sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.ITEM:
+			return true;
+{% endfor %}
+		default: 
+			return false;
+		}
+	}
+
+	private String getTable(Uri uri) {
+		switch (sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.DIRECTORY:
+		case {{ entity }}.ITEM:
+			return {{ entity }}.TABLE;
+{% endfor %}
+		default:
+			throw new IllegalArgumentException("Unknown URI " + uri);
+		}
+	}
+	private Uri getContentUri(Uri uri) {
+		switch (sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.DIRECTORY:
+		case {{ entity }}.ITEM:
+			return {{ entity }}.CONTENT_URI;
+{% endfor %}
+		default:
+			throw new IllegalArgumentException("Unknown URI " + uri);
+		}
+	}
+	private String[] getProjection(Uri uri) {
+		switch (sUriMatcher.match(uri)) {
+{% for entity in entities %}
+		case {{ entity }}.DIRECTORY:
+		case {{ entity }}.ITEM:
+			return {{ entity }}.Columns.FULL_PROJECTION;
+{% endfor %}
+		default:
+			throw new IllegalArgumentException("Unknown URI " + uri);
+		}
+	}
+
+}

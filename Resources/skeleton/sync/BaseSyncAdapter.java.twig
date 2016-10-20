@@ -1,0 +1,29 @@
+package {{ package }}.sync;
+
+import android.accounts.Account;
+import android.content.AbstractThreadedSyncAdapter;
+import android.content.Context;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.helpers.AccountHelper;
+
+public abstract class BaseSyncAdapter extends AbstractThreadedSyncAdapter {
+
+	public static final String TAG = Constants.APP_NAME + ".BaseSyncAdapter";
+
+	public BaseSyncAdapter(Context context, boolean autoInitialize) {
+		super(context, autoInitialize);
+	}
+
+	public void onSyncStart(Account account, String authority) {
+		if (Constants.DEBUG) Log.v(TAG, "onSyncStart: " + account.name + " " + authority);
+		if (AccountHelper.getSyncCallback() != null) AccountHelper.getSyncCallback().onSyncStateChange(true);
+	}
+	
+	public void onSyncFinish(Account account, String authority) {
+		if (Constants.DEBUG) Log.v(TAG, "onSyncFinish: " + authority);
+		if (AccountHelper.getSyncCallback() != null) AccountHelper.getSyncCallback().onSyncStateChange(false);
+	}
+
+}

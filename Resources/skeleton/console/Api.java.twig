@@ -1,0 +1,560 @@
+package {{ package }}.console;
+
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.accounts.AuthenticatorException;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.helpers.AccountHelper;
+import {{ package }}.helpers.Entity;
+import {{ package }}.utils.CloseUtils;
+import {{ package }}.utils.HttpData;
+import {{ package }}.utils.StringUtils;
+
+import org.apache.http.client.params.ClientPNames;
+import org.apache.http.client.params.CookiePolicy;
+import org.apache.http.client.protocol.ClientContext;
+import org.apache.http.impl.client.AbstractHttpClient;
+import org.apache.http.impl.client.BasicCookieStore;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.CoreProtocolPNames;
+import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class Api {
+
+    public static final String TAG = Constants.APP_NAME + ".Api";
+
+    private static final int BACKOFF_MILLI_SECONDS = 6 * 1000;
+    private static boolean AUTH_IN_PROGRESS = false;
+
+    private static Context sContext;
+    private static Api sInstance;
+
+    public static void setContext(Context context) {
+        //Log.i(TAG, "--> setContext: " + context.getPackageName());
+        sContext = context;
+        /*ConfigHelper.setContext(context);
+        CustomerHelper.setContext(context);
+        ServiceHelper.setContext(context);
+        InvoiceHelper.setContext(context);
+        PictureHelper.setContext(context);*/
+        if (sContext != null) {
+            SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(sContext);
+            if (pref.getString("api_url", null) == null || Constants.DEBUG)
+                pref.edit().putString("api_url", Constants.API_BASE_URL).commit();
+        }
+    }
+
+    public static Api getInstance() {
+        if (sInstance == null) sInstance = new Api();
+        return sInstance;
+    }
+
+    private final Bundle mUser;
+    @SuppressWarnings("deprecation")
+    private HttpContext mHttpContext;
+    private String mApiUrl = Constants.API_BASE_URL;
+
+    private Api() {
+        mUser = new Bundle();
+        initialize();
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(sContext);
+        if (pref != null) setApiUrl(pref.getString("api_url", Constants.API_BASE_URL));
+    }
+
+    private void initialize() {
+        mUser.clear();
+        mHttpContext = getHttpContext();
+    }
+
+    public void setApiUrl(String url) {
+        mApiUrl = url;
+    }
+
+    public String getApiUrl() {
+        return mApiUrl;
+    }
+
+    private HttpContext getHttpContext() {
+        HttpContext context = new BasicHttpContext();
+        context.setAttribute(ClientContext.COOKIE_STORE, new BasicCookieStore());
+        return context;
+    }
+
+    private AbstractHttpClient getHttpClient() {
+        HttpParams params = new BasicHttpParams();
+        params.setParameter(ClientPNames.HANDLE_REDIRECTS, false);
+        params.setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.RFC_2109);
+        params.setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.NETSCAPE);
+        /*params.setParameter(ClientPNames.DEFAULT_HOST, "mobile.free.fr");
+        params.setParameter(CoreProtocolPNames.ORIGIN_SERVER, "https://mobile.free.fr");*/
+        params.setParameter(CoreProtocolPNames.USER_AGENT, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.4 (KHTML, like Gecko) Chrome/22.0.1229.94 Safari/537.4");
+        return new DefaultHttpClient(params);
+    }
+
+    private HttpData getHttpData(Account account, String url) {
+        HttpData request = new HttpData(getHttpClient(), url);
+        if (account != null) {
+            String token = AccountHelper.getData(UserColumns.TOKEN);
+            if (!StringUtils.isEmpty(token)) request.header(Constants.API_TOKEN_NAME, token);
+            //Log.d(TAG+".Config", "--> getHttpData('" + Constants.API_TOKEN_NAME + "', '" + token + "')");
+        }
+        return request;
+    }
+
+    /**
+     * TODO : AUTHENTIFICATION
+     */
+
+    /**
+     * Validation d'un token d'authentification
+     *
+     * @param account
+     * @param token
+     * @return success
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+
+    public boolean isValidToken(Account account, String token) throws AuthenticatorException, IOException {
+        if (token == null) return false;
+        while (AUTH_IN_PROGRESS) {
+            try {
+                //if (Constants.DEBUG) Log.i(TAG, "--> starting wait");
+                Thread.sleep(BACKOFF_MILLI_SECONDS);
+                //if (Constants.DEBUG) Log.i(TAG, "--> continue");
+                if (mUser.containsKey(UserColumns.TOKEN)) return mUser.getString(UserColumns.TOKEN).equals(token);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                AUTH_IN_PROGRESS = false;
+            }
+        }
+        boolean success = false;
+        HttpData request = null;
+        try {
+            String url = mApiUrl + "/users/verify";
+            //if (Constants.DEBUG) Log.d(TAG+".Auth", "--> isValideToken('" + url + "', '" + token + "')");
+            request = getHttpData(null, url).header(Constants.API_TOKEN_NAME, token).get(mHttpContext);
+            JSONObject json = request.asJSONObject();
+            success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            //if (Constants.DEBUG) Log.d(TAG+".Auth", "--> token: '" + token + "', valide: '" + success + "'");
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Auth", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Auth", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return success;
+    }
+
+    /**
+     * Authentification via Account
+     *
+     * @param account
+     * @return token
+     * @throws AuthenticatorException
+     */
+    public String authenticate(Account account) throws AuthenticatorException, IOException {
+        if (account == null) return null;
+        String token = authenticate(account.name, AccountHelper.getPassword(account));
+        AccountHelper.setData(account, UserColumns.TOKEN, token);
+        return token;
+    }
+
+    /**
+     * Authentification via Email / Password
+     *
+     * @param email
+     * @param password
+     * @return token
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+    public String authenticate(String email, String password) throws AuthenticatorException, IOException {
+        if (StringUtils.isEmpty(email) || StringUtils.isEmpty(password)) return null;
+        String url = mApiUrl + "/signin";
+        Log.d(TAG+".Auth", "--> authentificate('" + url + "', '" + email + "', '" + password + "')");
+        //Log.v(TAG+".Auth", "---> auth in progress: " + AUTH_IN_PROGRESS);
+        while (AUTH_IN_PROGRESS) {
+            try {
+                //if (Constants.DEBUG) Log.i(TAG, "--> starting wait");
+                Thread.sleep(BACKOFF_MILLI_SECONDS);
+                if (mUser.containsKey(UserColumns.TOKEN)) return mUser.getString(UserColumns.TOKEN);
+                //else if (Constants.DEBUG) Log.i(TAG, "--> continue");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                AUTH_IN_PROGRESS = false;
+            }
+        }
+        mUser.remove(UserColumns.TOKEN);
+        String token = null;
+        HttpData request = null;
+        try {
+            //Log.v(TAG, "-> request: " + url);
+            //Log.v(TAG, "--> email: " + email);
+            //Log.v(TAG, "--> password: " + password);
+            request = getHttpData(null, url)
+                    .data("email", email).data("password", password)
+                    .post(mHttpContext);
+            //Log.v(TAG, "-> json:" + request.asString());
+            JSONObject json = request.asJSONObject();
+            boolean success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            JSONObject result = json.getJSONObject(Constants.API_KEY_RESULT);
+            if (!success) throw new AuthenticatorException(result.getString(Constants.API_KEY_ERROR));
+            token = result.getString(UserColumns.TOKEN);
+            mUser.putString(UserColumns.TOKEN, token);
+            //Log.d(TAG+".Auth", "--> token: '" + token + "'");
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Auth", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Auth", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return token;
+    }
+
+    /*private String encodePassword(String password) {
+        String salt = "DsdfgsYhG9sfdfsdfsdfs2guVoUudfgbWwsefeshkgjFgaC9mi";
+        String generatedPassword = null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.update(salt.getBytes());
+            byte[] bytes = md.digest(password.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bytes.length; i++) {
+                sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
+            }
+            generatedPassword = sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return generatedPassword;
+    }*/
+
+    /**
+     * Chargement des données d'un compte authentifié
+     *
+     * @param token
+     * @return Les données de l'utilisateur
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+    public Bundle loadUser(String token) throws AuthenticatorException, IOException {
+        Bundle data = new Bundle();
+        data.putBoolean(UserColumns.AUTHENTIFIED, true);
+        data.putString(UserColumns.TOKEN, token);
+        HttpData request = null;
+        try {
+            String url = mApiUrl + "/me";
+            //Log.d(TAG+".Auth", "---> loadUser('" + url + "', '" + token + "')");
+            request = getHttpData(null, url).header(Constants.API_TOKEN_NAME, token).get(mHttpContext);
+            //Log.d(TAG, request.asString());
+            JSONObject json = request.asJSONObject();
+            boolean success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            //Log.d(TAG+".Auth", "---> success: " + success);
+            if (success) {
+                JSONObject result = json.getJSONObject(Constants.API_KEY_RESULT);
+                data.putString(UserColumns.FIRSTNAME, result.getString(UserColumns.FIRSTNAME));
+                data.putString(UserColumns.LASTNAME, result.getString(UserColumns.LASTNAME));
+                data.putString(UserColumns.USERNAME, result.getString(UserColumns.USERNAME));
+            }
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Auth", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Auth", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return data;
+    }
+
+    public boolean saveUser(Account account, JSONObject data) throws AuthenticatorException, IOException {
+        HttpData request = null;
+        try {
+            String url = mApiUrl + "/user/save";
+            //Log.d(TAG+".Auth", "---> loadUser('" + url + "', '" + token + "')");
+            //JSONObject data = new JSONObject();
+            //data.put(UserColumns.ID, AccountHelper.getData(account, UserColumns.ID));
+            //data.put(UserColumns.USERNAME, AccountHelper.getData(account, UserColumns.USERNAME));
+            //data.put(UserColumns.SIGNATURE, AccountHelper.getData(account, UserColumns.SIGNATURE));
+            request = getHttpData(account, url).data(data).put(mHttpContext);
+            //Log.d(TAG, request.asString());
+            JSONObject json = request.asJSONObject();
+            return request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Save", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Save", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+    }
+
+    /**
+     * TODO : DATA LOADER, SAVER, DELETER
+     */
+
+    /**
+     * Chargement des Entités
+     *
+     * @param clzz     Class de l'entité a utiliser.
+     * @param account  Compte a synchroniser
+     * @param lastSync Timestamp (long) de la derniére synchronisation
+     * @return Une <b>liste</b> d'entité <b>&lt;Entity&gt</b>
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+    public <T extends Entity> List<T> load(Class<T> clzz, Account account, long lastSync) throws AuthenticatorException, IOException {
+        return load(clzz, account, lastSync, null);
+    }
+
+    public <T extends Entity> List<T> load(Class<T> clzz, Account account, long lastSync, Map<String, String> args) throws AuthenticatorException, IOException {
+        if (Constants.DEBUG) lastSync = 0;
+        List<T> list = new ArrayList<>();
+        HttpData request = null;
+        try {
+            T inst = clzz.newInstance();
+            String url = mApiUrl + "/" + inst.getApiPath();
+            Log.d(TAG + ".Load", "--> load('" + url + "')");
+            request = getHttpData(account, url);
+            request.data("updated", String.valueOf((int) (lastSync / 1000)));
+            if (args != null && !args.isEmpty())
+                for (String key : args.keySet())
+                    request.data(key, args.get(key));
+            request.get(mHttpContext);
+            // Log.d(TAG+".Load", "--> result: " + request.asString());
+            JSONObject json = request.asJSONObject();
+            boolean success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            if (!success) throw new AuthenticatorException(json.getJSONObject(Constants.API_KEY_RESULT).getString(Constants.API_KEY_ERROR));
+            else {
+                JSONArray ints = json.getJSONArray(Constants.API_KEY_RESULT);
+                for (int i = 0; i < ints.length(); i++) {
+                    JSONObject inter = ints.getJSONObject(i);
+                    inst = clzz.newInstance();
+                    inst.fromJSON(account, inter);
+                    if (inst.getSourceId() > 0) list.add((T) inst);
+                }
+            }
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Load", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Load", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } catch (InstantiationException e) {
+            Log.e(TAG + ".Load", "InstantiationException: " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Log.e(TAG + ".Load", "IllegalAccessException: " + e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return list;
+    }
+
+    /**
+     * Ajout d'une entité
+     *
+     * @param account Compte a synchroniser
+     * @param entity  Entité a sauvegarder
+     * @return Un <b>entier</b> positif correspondant au nouvel identifiant distant, ou 0 si une erreur est survenue
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+    public <T extends Entity> int save(Account account, T entity) throws AuthenticatorException, IOException {
+        int sourceId = 0;
+        HttpData request = null;
+        try {
+            //T inst = clzz.newInstance();
+            String url = mApiUrl + "/" + entity.getApiPath();
+            if (entity.getSourceId() > 0) url += "/" + entity.getSourceId();
+            Log.d(TAG + ".Save", "---> " + (entity.getSourceId() == 0 ? "insert" : "update") + "('" + url + "')");
+            Log.d(TAG+".Save", "---> data: " + entity.asJSON(account));
+            request = getHttpData(account, url).data(entity.asJSON(account));
+            if (entity.getSourceId() > 0) request.put(mHttpContext);
+            else request.post(mHttpContext);
+            Log.d(TAG + ".Save", "---> result: " + request.asString());
+            JSONObject json = request.asJSONObject();
+            boolean success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            if (!success) throw new AuthenticatorException(json.getJSONObject(Constants.API_KEY_RESULT).getString(Constants.API_KEY_ERROR));
+            if (json.has(Constants.API_KEY_RESULT)) {
+                JSONObject result = json.getJSONObject(Constants.API_KEY_RESULT);
+                if (result.has("id")) sourceId = result.getInt("id");
+            }
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Save", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Save", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return sourceId;
+    }
+
+    /**
+     * Suppression d'une entité
+     *
+     * @param account Compte a synchroniser
+     * @param entity  Entité à supprimer
+     * @return Un <b>booléen</b>, <b>true</b> si la suppression est effectuée avec succés, sinon <b>false</b>
+     * @throws AuthenticatorException
+     * @throws IOException
+     */
+    public <T extends Entity> boolean delete(Account account, T entity) throws AuthenticatorException, IOException {
+        boolean success = false;
+        HttpData request = null;
+        try {
+            String url = mApiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId();
+            Log.d(TAG + ".Delete", "---> delete('" + url + "')");
+            request = getHttpData(account, url).delete(mHttpContext);
+            //Log.d(TAG+".Delete", "---> result: " + request.asString());
+            JSONObject json = request.asJSONObject();
+            success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            if (!success) throw new AuthenticatorException(json.getJSONObject(Constants.API_KEY_RESULT).getString(Constants.API_KEY_ERROR));
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG + ".Delete", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG + ".Delete", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return success;
+    }
+
+    public <T extends Entity> long fileSize(Account account, T entity) throws AuthenticatorException, IOException {
+        long size = 0;
+        return fileSize(account, ((Entity.WithData) entity).getData());
+    }
+
+    public long fileSize(Account account, String source) throws AuthenticatorException, IOException {
+        if (StringUtils.isEmpty(source)) return 0;
+        long size = 0;
+        String url = mApiUrl + source;
+        //Log.d(TAG+".FileSize", "---> fileSize('" + url + "')");
+        HttpData request = null;
+        try {
+            request = getHttpData(account, url).head();
+            if (request.header("Content-Length") != null) {
+                String length = request.header("Content-Length").getValue();
+                if (StringUtils.isLong(length)) size = Long.parseLong(length);
+            }
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG+".FileSize", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        //Log.d(TAG+".FileSize", "---> size: " + size);
+        return size;
+    }
+
+    public Uri download(Account account, String source) throws AuthenticatorException, IOException {
+        if (StringUtils.isEmpty(source)) return null;
+        Uri uri = null;
+        String name = StringUtils.getFilename(source);
+        String url = mApiUrl + source;
+        Log.d(TAG+".Download", "---> download('" + url + "')");
+        HttpData request = null;
+        try {
+            request = getHttpData(account, url).get();
+            InputStream is = request.asInputStream();
+            try {
+                File tmp = new File(sContext.getCacheDir(), name);
+                FileOutputStream os = new FileOutputStream(tmp);
+                try {
+                    final byte[] buffer = new byte[1024];
+                    int read;
+                    while ((read = is.read(buffer)) != -1)
+                        os.write(buffer, 0, read);
+                    os.flush();
+                } finally {
+                    CloseUtils.closeQuietly(os);
+                }
+                uri = Uri.fromFile(tmp);
+                //Log.d(TAG+".Download", "---> tmp uri: " + uri);
+            } catch (Exception e) {
+                Log.e(TAG+".Download", "Exception: " + e.getMessage());
+            } finally {
+                CloseUtils.closeQuietly(is);
+            }
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG+".Download", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return uri;
+    }
+
+    public <T extends Entity> String upload(Account account, T entity) throws AuthenticatorException, IOException {
+        String path = null;
+        File file = new File(((Entity.WithData) entity).getData());
+        String url = mApiUrl + "/medias/" + entity.getApiPath() + "/" + entity.getSourceId(); // + "/" + file.getName();
+        Log.d(TAG+".Upload", "---> upload('" + url + "')");
+        HttpData request = null;
+        try {
+            request = getHttpData(account, url)/*.data("id", String.valueOf(entity.getSourceId()))*/
+                    .file(file).post();
+            Log.v(TAG, request.asString());
+            JSONObject json = request.asJSONObject();
+            boolean success = request.isHttpOK() && json.getBoolean(Constants.API_KEY_SUCCESS);
+            if (!success) throw new AuthenticatorException(json.getString(Constants.API_KEY_ERROR));
+            JSONObject data = json.getJSONArray(Constants.API_KEY_RESULT).getJSONObject(0);
+            path = data.getString("path");
+        } catch (HttpData.HttpDataException e) {
+            Log.e(TAG+".Upload", "HttpDataException: " + e.getMessage());
+            throw new IOException(e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG+".Upload", "JSONException: " + e.getMessage());
+            throw new AuthenticatorException(e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(request);
+        }
+        return path;
+    }
+
+    private static long getLocalFileSize(ContentResolver cr, Uri uri) {
+        try {
+            InputStream is = cr.openInputStream(uri);
+            if (is != null) return is.available();
+        } catch (IOException ignored) {}
+        return 0;
+    }
+
+}

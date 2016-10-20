@@ -1,0 +1,451 @@
+package {{ package }}.entity;
+
+import android.accounts.Account;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.content.CursorLoader;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.helpers.Entity;
+import {{ package }}.providers.{{ providerName }}Provider;
+import {{ package }}.utils.CloseUtils;
+{% if withData %}
+import {{ package }}.utils.FileUtils;
+{% endif %}
+import {{ package }}.utils.StringUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+{% if withData %}
+import java.io.*;
+{% endif %}
+import java.util.ArrayList;
+import java.util.List;
+
+public final class {{ entityName }} extends Entity{% if withData %} implements Entity.WithData{% endif %} {
+
+    public static final String TAG				= Constants.APP_NAME + ".{{ entityName }}";
+
+    public static final String TABLE 			= "{{ entityName|slug }}";
+    public static final Uri CONTENT_URI 		= Uri.parse("content://" + {{ providerName }}Provider.AUTHORITY + "/" + TABLE);
+    public static final String CONTENT_TYPE 	= "vnd.android.cursor.dir/{{ package|vnd }}." + TABLE;
+    public static final String MIME_TYPE 		= "vnd.android.cursor.item/{{ package|vnd }}." + TABLE;
+    public static final int DIRECTORY 			= {{ directoryId }};
+    public static final int ITEM 				= {{ directoryId+1 }};
+
+    private static Context sContext;
+    private static ContentResolver sContentResolver;
+{% if withData %}
+    private static String sPath;
+{% endif %}
+
+    public static void setContext(Context context) {
+        sContext = context;
+        sContentResolver = sContext.getContentResolver();
+{% if withData %}
+        sPath = sContext.getFilesDir().getPath() + "/" + {{ entityName }}.TABLE + "/";
+        File dir = new File(sPath);
+        if (!dir.exists()) dir.mkdir();
+{% endif %}
+    }
+
+{% if withData %}
+    public static void setContent(Uri uri, Uri cUri) {
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        try {
+            inputStream = sContentResolver.openInputStream(cUri);
+            if (inputStream != null) {
+                outputStream = sContentResolver.openOutputStream(uri);
+                FileUtils.copyStream(inputStream, outputStream);
+            }
+        } catch (FileNotFoundException e) {
+            Log.e(TAG, "FileNotFoundException: " + e.getMessage());
+        } catch (IOException e) {
+            Log.e(TAG, "IOException: " + e.getMessage());
+        } finally {
+            CloseUtils.closeQuietly(inputStream);
+            CloseUtils.closeQuietly(outputStream);
+        }
+    }
+{% endif %}
+
+    public static class Columns extends BaseColumns {
+
+{% for property in properties %}
+        public static final String {{ property.name|sqlName|upper }}				= "{{ property.name|sqlName }}";
+{% endfor %}
+{% if withData %}
+        public static final String DATA 			= "_data";
+        public static final String SIZE 			= "_size";
+        public static final String DISPLAY_NAME		= "_display_name";
+{% endif %}
+
+        public static final String[] FULL_PROJECTION = new String[] {
+                ID,
+                ACCOUNT,
+                SOURCE_ID,
+{% for property in properties %}
+                {{ property.name|sqlName|upper }},
+{% endfor %}
+{% if withData %}
+                DATA,
+                SIZE,
+                DISPLAY_NAME,
+{% endif %}
+                DIRTY,
+                DELETED
+        };
+
+        public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE + " ("
+                + ID + " INTEGER PRIMARY KEY, "
+                + ACCOUNT + " TEXT NOT NULL, "
+                + SOURCE_ID + " INTEGER, "
+{% for property in properties %}
+                + {{ property.name|sqlName|upper }} + " {{ property.type|sqlType }}, "
+{% endfor %}
+{% if withData %}
+                + DATA + " TEXT, "
+                + SIZE + " REAL, "
+                + DISPLAY_NAME + " TEXT, "
+{% endif %}
+                + DIRTY + " INTEGER, "
+                + DELETED + " INTEGER"
+                + ");";
+
+        public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE + ";";
+    }
+
+    public static class {{ entityName }}Loader extends CursorLoader {
+        private final ForceLoadContentObserver mObserver = new ForceLoadContentObserver();
+        private final Account mAccount;
+        private final Bundle mArgs;
+        public {{ entityName }}Loader(Context context, Account account, Bundle args) {
+            super(context);
+            if (sContext == null) setContext(context);
+            mAccount = account;
+            mArgs = args;
+        }
+        @Override
+        public Cursor loadInBackground() {
+            String where = BaseColumns.getWhere(mAccount);
+            if (mArgs != null && !mArgs.isEmpty()) {
+                for (String key : mArgs.keySet())
+                    where += " AND " + key + " = '" + mArgs.getString(key) + "'";
+            }
+            where += " AND " + BaseColumns.DELETED + " = 0";
+            Cursor cursor = sContentResolver.query(CONTENT_URI, null, where, null, null);
+            if (cursor != null) {
+                cursor.getCount();
+                cursor.registerContentObserver(mObserver);
+            }
+            return cursor;
+        }
+    }
+
+    public static List<{{ entityName }}> getMarkedAs(Account account, MarkedAs mark) {
+        return select(account, mark.value());
+    }
+
+    public static long contains(Account account, {{ entityName }} entity) {
+        if (entity == null) return 0;
+        long id = 0;
+        String where = BaseColumns.getWhere(account);
+        where += " AND " + Columns.SOURCE_ID + " = " + entity.getSourceId();
+        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) id = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        return id;
+    }
+
+    public static boolean hasChange({{ entityName }} local, {{ entityName }} remote) {
+        if (local == null || remote == null) return false;
+{% for property in properties %}
+    {% if property.type in ['bool', 'int', 'long', 'float', 'double'] %}
+        if (local.{{ property.name|attrName }} != remote.{{ property.name|attrName }}) return true;
+    {% else %}
+        if (!local.{{ property.name|attrName }}.equals(remote.{{ property.name|attrName }})) return true;
+    {% endif %}
+{% endfor %}
+        return false;
+    }
+
+    public static long getIdFromSourceId(Account account, long sourceId) {
+        //Log.v(TAG, "--> getIdFromSourceId: " + sourceId);
+        if (sourceId == 0) return 0;
+        long localId = 0;
+        String where = Columns.ACCOUNT + " = '" + account.name + "' AND " + Columns.SOURCE_ID + " = " + sourceId;
+        //Log.v(TAG, "--> where: " + where);
+        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) localId = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        //Log.v(TAG, "--> localId: " + localId);
+        return localId;
+    }
+    public static long getSourceIdFromId(Account account, long localId) {
+        long sourceId = 0;
+        String where = Columns.ACCOUNT + " = '" + account.name + "' AND " + Columns.ID + " = " + localId;
+        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.SOURCE_ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) sourceId = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        return sourceId;
+    }
+
+    public static {{ entityName }} select(Uri uri) {
+        {{ entityName }} entity = null;
+        Cursor cursor = sContentResolver.query(uri, null, null , null, null);
+        if (cursor != null && cursor.moveToNext()) entity = cursorTo{{ entityName }}(cursor);
+        CloseUtils.closeQuietly(cursor);
+        return entity;
+    }
+    public static List<{{ entityName }}> select(Account account) {
+        return select(account, null);
+    }
+    public static {{ entityName }} select(Account account, long localId) {
+        return select(ContentUris.withAppendedId(CONTENT_URI, localId));
+    }
+    public static List<{{ entityName }}> select(Account account, String where) {
+        return select(account, where, null);
+    }
+    public static List<{{ entityName }}> select(Account account, String where, String order) {
+        List<{{ entityName }}> list = new ArrayList<>();
+        String w = BaseColumns.getWhere(account);
+        if (!StringUtils.isEmpty(where)) w += " AND (" + where + ")";
+        Cursor cursor = sContentResolver.query(CONTENT_URI, null, w , null, order);
+        if (cursor != null && cursor.moveToFirst())
+            do { list.add(cursorTo{{ entityName }}(cursor)); }
+            while (cursor.moveToNext());
+        CloseUtils.closeQuietly(cursor);
+        return list;
+    }
+
+{% if withData %}
+    public static Uri insert(Account account, {{ entityName }} entity) {
+        return insert(account, entity, null);
+    }
+    public static Uri insert(Account account, {{ entityName }} entity, Uri fileUri) {
+        return insert(account, entity, fileUri, false);
+    }
+    public static Uri insert(Account account, {{ entityName }} entity, Uri fileUri, boolean callerIsSyncAdapter) {
+        Uri uri = CONTENT_URI;
+        if (callerIsSyncAdapter)
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+        ContentValues values = getContentValues(account, entity, fileUri);
+        Uri newUri = sContentResolver.insert(uri, values);
+        if (newUri != null && fileUri != null) setContent(newUri, fileUri);
+        return newUri;
+    }
+{% else %}
+    public static Uri insert(Account account, {{ entityName }} entity) {
+        return insert(account, entity, false);
+    }
+    public static Uri insert(Account account, {{ entityName }} entity, boolean callerIsSyncAdapter) {
+        Uri uri = CONTENT_URI;
+        if (callerIsSyncAdapter)
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+        ContentValues values = getContentValues(account, entity);
+        Uri newUri = sContentResolver.insert(uri, values);
+        return newUri;
+    }
+{% endif %}
+
+{% if withData %}
+    public static int update(Account account, {{ entityName }} entity) {
+        return update(account, entity, null);
+    }
+    public static int update(Account account, {{ entityName }} entity, Uri fileUri) {
+        return update(account, entity, fileUri, false);
+    }
+    public static int update(Account account, {{ entityName }} entity, Uri fileUri, boolean callerIsSyncAdapter) {
+        Uri uri = entity.getUri();
+        if (callerIsSyncAdapter)
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+        ContentValues values = getContentValues(account, entity, fileUri);
+        if (!callerIsSyncAdapter) values.put(Columns.DIRTY, true);
+        int count = sContentResolver.update(uri, values, null, null);
+        if (count == 1 && fileUri != null) setContent(entity.getUri(), fileUri);
+        return count;
+    }
+{% else %}
+    public static int update(Account account, {{ entityName }} entity) {
+        return update(account, entity, false);
+    }
+    public static int update(Account account, {{ entityName }} entity, boolean callerIsSyncAdapter) {
+        Uri uri = entity.getUri();
+        if (callerIsSyncAdapter)
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+        ContentValues values = getContentValues(account, entity);
+        if (!callerIsSyncAdapter) values.put(Columns.DIRTY, true);
+        int count = sContentResolver.update(uri, values, null, null);
+        return count;
+    }
+{% endif %}
+
+    public static int delete(Account account, long localId) {
+        return delete(account, localId, false);
+    }
+    public static int delete(Account account, long localId, boolean callerIsSyncAdapter) {
+        Uri uri = ContentUris.withAppendedId(CONTENT_URI, localId);
+        int count;
+        if (callerIsSyncAdapter) {
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+            count = sContentResolver.delete(uri, null, null);
+        } else {
+            ContentValues values = new ContentValues();
+            values.put(Columns.DELETED, true);
+            count = sContentResolver.update(uri, values, null, null);
+        }
+        return count;
+    }
+
+{% if withData %}
+    public static ContentValues getContentValues(Account account, {{ entityName }} entity) {
+        return getContentValues(account, entity, null);
+    }
+    public static ContentValues getContentValues(Account account, {{ entityName }} entity, Uri fileUri) {
+        ContentValues values = {{ entityName|lcfirst }}ToContent(entity);
+        if (entity.getId() == 0) values.put(Columns.ACCOUNT, account.name);
+        if (fileUri != null) {
+            values.put(Columns.DATA, sPath + fileUri.getLastPathSegment());
+            values.put(Columns.SIZE, getUriFileSize(fileUri));
+            values.put(Columns.DISPLAY_NAME, StringUtils.removeExtension(fileUri.getLastPathSegment()));
+        } else if (entity.hasData()) {
+            values.put(Columns.DATA, entity.getData());
+        }
+        return values;
+    }
+    private static long getUriFileSize(final Uri uri) {
+        try {
+            File f = new File(uri.getPath());
+            return f.length();
+        } catch (Exception e) {}
+        return 0;
+    }
+{% else %}
+    public static ContentValues getContentValues(Account account, {{ entityName }} entity) {
+        ContentValues values = {{ entityName|lcfirst }}ToContent(entity);
+        if (entity.getId() == 0) values.put(Columns.ACCOUNT, account.name);
+        return values;
+    }
+{% endif %}
+
+    public static {{ entityName }} cursorTo{{ entityName }}(Cursor c){
+        {{ entityName }} entity = new {{ entityName }}();
+        entity.setId(c.getLong(c.getColumnIndex(Columns.ID)));
+        entity.setSourceId(c.getLong(c.getColumnIndex(Columns.SOURCE_ID)));
+{% for property in properties %}
+        entity.set{{ property.name|attrName|ucfirst }}(c.get{{ property.type|ucfirst }}(c.getColumnIndex(Columns.{{ property.name|sqlName|upper }})));
+{% endfor %}
+        entity.setDirty(c.getInt(c.getColumnIndex(Columns.DIRTY)) == 1);
+        entity.setDelete(c.getInt(c.getColumnIndex(Columns.DELETED)) == 1);
+        return entity;
+    }
+
+    private static ContentValues {{ entityName|lcfirst }}ToContent({{ entityName }} entity){
+        ContentValues values = new ContentValues();
+        if (entity.getId() > 0) values.put(Columns.ID, entity.getId());
+        values.put(Columns.SOURCE_ID, entity.getSourceId());
+{% for property in properties %}
+        values.put(Columns.{{ property.name|sqlName|upper }}, entity.get{{ property.name|attrName|ucfirst }}());
+{% endfor %}
+        values.put(Columns.DIRTY, entity.isDirty());
+        values.put(Columns.DELETED, entity.isDelete());
+        return values;
+    }
+
+    public {{ entityName }}() {}
+
+{% for property in properties %}
+    private {{ property.type }} {{ property.name|attrName }};
+{% endfor %}
+{% if withData %}
+    private String data;
+    private long size;
+{% endif %}
+
+    public final String getApiPath() {
+        return {{ entityName }}.TABLE;
+    }
+
+    @Override
+    public final void fromJSON(Account account, JSONObject json) {
+        super.fromJSON(account, json);
+        try {
+{% for property in properties %}
+            set{{ property.name|attrName|ucfirst }}(json.get{{ property.type|ucfirst }}(Columns.{{ property.name|sqlName|upper }}));
+{% endfor %}
+        } catch (JSONException e) {
+            Log.e(TAG, "JSONException: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public final JSONObject asJSON(Account account) {
+        JSONObject json = super.asJSON(account);
+        try {
+{% for property in properties %}
+            json.put(Columns.{{ property.name|sqlName|upper }}, get{{ property.name|attrName|ucfirst }}());
+{% endfor %}
+        } catch (JSONException e) {
+            Log.e(TAG, "JSONException: " + e.getMessage());
+            json = null;
+        }
+        // Log.d(TAG, "asJSON: " + json.toString());
+        return json;
+    }
+
+    public static Uri getUri(long uid) {
+        if (uid == 0) return null;
+        return ContentUris.withAppendedId(CONTENT_URI, uid);
+    }
+
+    public Uri getUri() {
+        return {{ entityName }}.getUri(id);
+    }
+
+{% for property in properties %}
+    public {{ property.type }} get{{ property.name|attrName|ucfirst }}() {
+        return this.{{ property.name|attrName }};
+    }
+    public void set{{ property.name|attrName|ucfirst }}({{ property.type }} value) {
+        this.{{ property.name|attrName }} = value;
+    }
+
+{% endfor %}
+{% if withData %}
+    @Override
+    public String getData() {
+        return data;
+    }
+    @Override
+    public void setData(String data) {
+        this.data = data;
+    }
+
+    public String getMimeType() {
+        if (StringUtils.isEmpty(this.data)) return null;
+        return StringUtils.getMimeType(this.data);
+    }
+
+    @Override
+    public long getSize() {
+        return size;
+    }
+    public void setSize(long size) {
+        this.size = size;
+    }
+
+{% endif %}
+    @Override
+    public String toString() {
+        return "{{ entityName }} Id: "+ id + ", sourceId: " + sourceId;
+    }
+
+}

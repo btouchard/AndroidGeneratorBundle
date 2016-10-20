@@ -1,0 +1,172 @@
+package {{ package }}.helpers;
+
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.accounts.AuthenticatorException;
+import android.accounts.OperationCanceledException;
+import android.annotation.SuppressLint;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.console.*;
+import {{ package }}.entity.*;
+import {{ package }}.providers.*;
+
+import java.io.IOException;
+
+public class AccountHelper {
+
+	public static final String TAG = Constants.APP_NAME + ".AccountHelper";
+
+	public static final int SYNC_FINISH = 0;
+	public static final int SYNC_PROGRESS = 1;
+
+	public interface ISyncCallback {
+		void onSyncStateChange(boolean syncInProgress);
+	}
+
+	private static Context sContext;
+	private static AccountManager sManager;
+	private static Account sAccount;
+	private static ISyncCallback sSyncCallback;
+
+	private AccountHelper() {}
+
+	public static void setContext(Context context) {
+		if (sContext == null || context != sContext) {
+			sContext = context;
+			Api.setContext(sContext);
+{% for entity in entities %}
+			{{ entity }}.setContext(sContext);
+{% endfor %}
+			sManager = AccountManager.get(sContext);
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(sContext);
+			if (sAccount == null && prefs.contains("selected_account")) {
+				String name = prefs.getString("selected_account", null);
+				if (name != null) sAccount = getAccountByTypeAndName(Constants.ACCOUNT_TYPE, name);
+			}
+		}
+	}
+
+	public static void setSyncCallback(ISyncCallback callback) {
+		sSyncCallback = callback;
+	}
+	public static ISyncCallback getSyncCallback() { return sSyncCallback; }
+
+	public static void invalidateDatabase() {
+		DatabaseHelper.invalidate(sContext);
+	}
+
+	public static void requestSync() {
+		requestSync(getAccount());
+	}
+	public static void requestSync(Account account) {
+		requestSync(account, null);
+	}
+	public static void requestSync(Account account, String[] authorities) {
+		Bundle extras = new Bundle();
+		extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+		if (authorities == null) authorities = new String[] { {{ authorities }} };
+		for (String authority : authorities) ContentResolver.requestSync(account, authority, extras);
+	}
+
+	public static String blockingGetAuthToken(Account account, boolean manual) throws AuthenticatorException, IOException {
+		String authToken = null;
+		try {
+			if (manual) sManager.setAuthToken(account, Constants.AUTH_TOKEN_TYPE, null);
+			authToken = sManager.blockingGetAuthToken(account, Constants.AUTH_TOKEN_TYPE, false);
+			boolean valid = Api.getInstance().isValidToken(account, authToken);
+			if (!valid) {
+				if (authToken != null) sManager.invalidateAuthToken(Constants.AUTH_TOKEN_TYPE, authToken);
+				sManager.setAuthToken(account, Constants.AUTH_TOKEN_TYPE, null);
+				authToken = sManager.blockingGetAuthToken(account, Constants.AUTH_TOKEN_TYPE, false);
+			}
+		} catch (OperationCanceledException e) {
+			Log.e(TAG, "OperationCanceledException: " + e.getMessage());
+		} finally {
+			sManager.setUserData(account, UserColumns.TOKEN, authToken);
+		}
+		//if (Constants.DEBUG) Log.d(TAG, "-> token: " + authtoken);
+		return authToken;
+	}
+
+	public static Account[] getAccountsByType(String type) {
+		return sManager.getAccountsByType(type);
+	}
+	public static Account getAccountByTypeAndName(String type, String name) {
+		Account[] accounts = sManager.getAccountsByType(type);
+		for (Account account : accounts) {
+			if (name.equals(account.name)) return account;
+		}
+		return null;
+	}
+
+	public static boolean isEmpty() {
+		return !hasAccount();
+	}
+
+	public static boolean isAccount(Account account) {
+		if (Constants.ACCOUNT_TYPE.equals(account.type)) {
+			if (!hasAccount()) return false;
+			return getAccount().name.equals(account.name);
+		}
+		return false;
+	}
+
+	@SuppressLint("CommitPrefEdits")
+	public static void setAccount(Account account) {
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(sContext);
+		boolean change = false;
+		if (Constants.ACCOUNT_TYPE.equals(account.type) && !account.equals(sAccount)) {
+			sAccount = account;
+			prefs.edit().putString("selected_account", sAccount.name).commit();
+			change = true;
+		}
+		Log.v(TAG, "setCurrentAccount: " + change + " > " + account);
+		//if (change) dispatchEvent(new Event(ACCOUNT_CHANGE, account));
+	}
+
+	public static String getData(Account account, String name) {
+		if (account == null) return null;
+		String value = sManager.getUserData(account, name);
+		//Log.v(TAG, "getBoxData: " + name + " = " + value);
+		return value;
+	}
+	public static void setData(Account account, String name, String data) {
+		if (account == null || name == null) return;
+		sManager.setUserData(account, name, data);
+	}
+
+	public static String getData(String name) {
+		return getData(getAccount(), name);
+	}
+
+	public static boolean hasAccount() {
+		if (sManager == null) return false;
+		return sManager.getAccountsByType(Constants.ACCOUNT_TYPE).length > 0;
+	}
+	public static Account getAccount() {
+		if (sAccount == null && hasAccount()) {
+			Account[] accounts = sManager.getAccountsByType(Constants.ACCOUNT_TYPE);
+			sAccount = accounts[0];
+		}
+		return sAccount;
+	}
+
+	public static String getPassword() {
+		if (hasAccount()) return getPassword(getAccount());
+		return null;
+	}
+	public static String getPassword(Account account) {
+		if (sManager != null && account != null) {
+			return sManager.getPassword(account);
+		}
+		return null;
+	}
+
+}

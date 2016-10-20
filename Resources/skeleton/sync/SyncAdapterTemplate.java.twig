@@ -1,0 +1,67 @@
+package {{ package }}.sync;
+
+import android.accounts.Account;
+import android.accounts.AuthenticatorException;
+import android.annotation.SuppressLint;
+import android.content.ContentProviderClient;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.SyncResult;
+import android.content.SharedPreferences;
+import android.text.TextUtils;
+import android.os.Bundle;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.helpers.AccountHelper;
+import {{ package }}.helpers.Entity;
+{% for entity in entities %}
+import {{ package }}.entity.{{ entity }};
+{% endfor %}
+
+import java.io.IOException;
+
+public class {{ provider }}SyncAdapter extends BaseSyncAdapter {
+
+	public static final String TAG 							= Constants.APP_NAME + ".{{ provider }}SyncAdapter";
+
+	public {{ provider }}SyncAdapter(Context context, boolean autoInitialize) {
+		super(context, autoInitialize);
+	}
+
+	@SuppressLint("CommitPrefEdits")
+	@Override
+	public void onPerformSync(Account account, Bundle extras, String authority, ContentProviderClient provider, SyncResult syncResult) {
+		super.onSyncStart(account, authority);
+		AccountHelper.setContext(getContext());
+
+		final boolean uploadOnly = extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD, false);
+		final boolean manualSync = extras.getBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, false);
+		final boolean initialize = extras.getBoolean(ContentResolver.SYNC_EXTRAS_INITIALIZE, false);
+		final SharedPreferences syncMeta = getContext().getSharedPreferences("sync:" + authority + ":" + account.name, 0);
+		long lastSync = syncMeta.getLong(Constants.API_LAST_SYNC, 0);
+		if (manualSync || initialize || Constants.DEBUG) lastSync = 0;
+		boolean fullSync = !uploadOnly || manualSync || initialize;
+		ContentResolver cr = getContext().getContentResolver();
+
+		try {
+			String authToken = AccountHelper.blockingGetAuthToken(account, false);
+			//Log.v(TAG, "authToken: " + authToken);
+			if (!TextUtils.isEmpty(authToken)) {
+{% for entity in entities %}
+				Entity.performSync({{ entity }}.class, account, fullSync, lastSync, cr, syncResult);
+{% endfor %}
+			}
+		} catch (final AuthenticatorException e) {
+			Log.e(TAG, "AuthenticatorException", e);
+			syncResult.stats.numAuthExceptions++;
+		} catch (final IOException e) {
+			Log.e(TAG, "IOException", e);
+			syncResult.stats.numIoExceptions++;
+		} finally {
+			syncMeta.edit().putLong(Constants.API_LAST_SYNC, System.currentTimeMillis()).commit();
+			super.onSyncFinish(account, authority);
+		}
+	}
+
+}

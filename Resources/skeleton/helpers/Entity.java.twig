@@ -1,0 +1,296 @@
+package {{ package }}.helpers;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
+import android.text.TextUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.accounts.Account;
+import android.accounts.AuthenticatorException;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.SyncResult;
+import android.net.Uri;
+import android.util.Log;
+
+import {{ package }}.Constants;
+import {{ package }}.console.Api;
+
+public abstract class Entity {
+
+    public static final String TAG 			= Constants.APP_NAME + ".Entity";
+
+    public static class BaseColumns {
+
+        public static final String ID		 		= "_id";
+        public static final String ACCOUNT 		    = "account";
+        public static final String SOURCE_ID 		= "source_id";
+        public static final String DIRTY 			= "dirty";
+        public static final String DELETED 		    = "deleted";
+
+        public static String getWhere(Account account) {
+            if (account == null) return null;
+            return ACCOUNT + "='" + account.name + "'";
+        }
+
+    }
+
+    public interface WithData {
+        long getSize();
+        void setSize(long size);
+        String getData();
+        void setData(String data);
+    }
+
+    public enum MarkedAs {
+        INSERT(BaseColumns.SOURCE_ID + " = 0"),
+        UPDATE(BaseColumns.DIRTY + " = 1"),
+        DELETED(BaseColumns.DELETED + " = 1");
+        private final String value;
+        MarkedAs(String value){ this.value = value; }
+        public String value(){ return value; }
+    }
+
+    protected long id, sourceId;
+    protected boolean dirty = false, delete = false;
+
+    public Entity() {
+
+    }
+
+    public boolean isNew() {
+        return id == 0;
+    }
+
+    public long getId() { return id; }
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public long getSourceId() { return sourceId; }
+    public void setSourceId(long id) {
+        this.sourceId = id;
+    }
+
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
+    }
+
+    public boolean isDelete() {
+        return delete;
+    }
+
+    public void setDelete(boolean delete) {
+        this.delete = delete;
+    }
+
+    public abstract Uri getUri();
+    public abstract String getApiPath();
+
+    public boolean hasData() {
+        return this instanceof WithData && !TextUtils.isEmpty(((WithData) this).getData());
+    }
+
+    public void fromJSON(Account account, JSONObject json) {
+        try {
+            setSourceId(json.getLong("id"));
+        } catch (JSONException e) {
+            Log.e(TAG, "JSONException: " + e.getMessage());
+        }
+    }
+
+    public JSONObject asJSON(Account account) {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("id", getSourceId());
+        } catch (JSONException e) {
+            Log.e(TAG, "JSONException: " + e.getMessage());
+        }
+        return json;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof Entity && o.getClass().getSimpleName().equals(this.getClass().getSimpleName()) && getSourceId() == ((Entity) o).getSourceId();
+    }
+
+    /**
+     * Exécute une synchronisation de données (Entity) Client &lt;-&gt; Serveur
+     * @param clzz Class de l'entité a utiliser.
+     * @param account Compte a synchroniser
+     * @param fullSync Synchronisation complète
+     * @param lastSync Timestamp (long) de la dernière synchronisation
+     * @param cr Source de données (ContentResolver)
+     * @param syncResult Résultats (SyncResult) de synchronisation pour le syncadapter
+     * @throws AuthenticatorException Erreur d'authentification
+     * @throws IOException Erreur de connexion au server
+     */
+    public static <T extends Entity> void performSync(final Class<T> clzz, final Account account, final boolean fullSync, final long lastSync, final ContentResolver cr, final SyncResult syncResult) throws AuthenticatorException, IOException {
+        if (Constants.DEBUG) Log.i(TAG, "-> performSync: " + clzz.getName().substring(clzz.getName().lastIndexOf(".") + 1) + ", fullSync: " + fullSync + ", lastSync: " + lastSync);
+        try {
+            Method m;
+            m = clzz.getMethod("getMarkedAs", Account.class, MarkedAs.class);
+            List<T> deleted = (List<T>) m.invoke(null, account, MarkedAs.DELETED);
+            //Log.v(TAG, "--> delete from remote: " + deleted.size());
+            for (T delete : deleted) {
+                if (Api.getInstance().delete(account, delete)) {
+                    Uri uri = delete.getUri().buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+                    cr.delete(uri, null, null);
+                    syncResult.stats.numDeletes++;
+                }
+            }
+            m = clzz.getMethod("getMarkedAs", Account.class, MarkedAs.class);
+            List<T> inserts = (List<T>) m.invoke(null, account, MarkedAs.INSERT);
+            //Log.v(TAG, "--> insert to remote: " + inserts.size());
+            for (T insert : inserts) {
+                Log.v(TAG, "insert: " + insert.toString());
+                Log.v(TAG, "-> hasData: " + insert.hasData());
+                if (insert.hasData()) Log.v(TAG, "-> size: " + ((WithData) insert).getSize());
+                int sourceId = Api.getInstance().save(account, insert);
+                Log.v(TAG, "-> sourceId: " + sourceId);
+                if (sourceId > 0) {
+                    Uri uri = insert.getUri().buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+                    ContentValues values = new ContentValues();
+                    values.put(BaseColumns.SOURCE_ID, sourceId);
+                    cr.update(uri, values, null, null);
+                    syncResult.stats.numInserts++;
+//					if (insert instanceof WithData) {
+//						insert.setSourceId(sourceId);
+//						long localSize = getLocalFileSize(cr, insert.getUri());
+//						//Log.v(TAG, "localSize: "+ localSize);
+//						if (localSize > 0) {
+//							String path = Api.getInstance().upload(account, insert);
+//							if (path != null) {
+//								((WithData) insert).setData(path);
+//								//Api.getInstance().save(account, insert);
+//								m = clzz.getMethod("update", Account.class, clzz, boolean.class);
+//								int cnt = (Integer) m.invoke(null, account, insert, true);
+//							}
+//						}
+//					}
+                }
+            }
+            m = clzz.getMethod("getMarkedAs", Account.class, MarkedAs.class);
+            List<T> updates = (List<T>) m.invoke(null, account, MarkedAs.UPDATE);
+            //Log.v(TAG, "--> update to remote: " + updates.size());
+            for (T update : updates) {
+                int sourceId = Api.getInstance().save(account, update);
+                //Log.v(TAG, "--> save sourceId: " + sourceId);
+                if (sourceId > 0) {
+                    Uri uri = update.getUri().buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+                    ContentValues values = new ContentValues();
+                    values.put(BaseColumns.DIRTY, 0);
+                    cr.update(uri, values, null, null);
+                    syncResult.stats.numUpdates++;
+//					if (update instanceof WithData) {
+//						long localSize = getLocalFileSize(cr, update.getUri());
+//						long remoteSize = Api.getInstance().fileSize(account, update);
+//						//Log.v(TAG, "---> localSize: " + localSize + ", remoteSize: " + remoteSize);
+//						if (localSize > 0 && remoteSize > 0 && localSize != remoteSize) {
+//							String path = Api.getInstance().upload(account, update);
+//							if (path != null) {
+//								((WithData) update).setData(path);
+//								//Api.getInstance().save(account, insert);
+//								m = clzz.getMethod("update", Account.class, clzz, boolean.class);
+//								int cnt = (Integer) m.invoke(null, account, update, true);
+//							}
+//						}
+//					}
+                }
+            }
+            if (fullSync) {
+                m = clzz.getMethod("select", Account.class);
+                List<T> currents = (List<T>) m.invoke(null, account);
+                List<T> remotes = Api.getInstance().load(clzz, account, lastSync);
+                //Log.v(TAG, "currents size: " + (currents != null ? currents.size() : 0));
+                //Log.v(TAG, "remotes size: " + remotes.size());
+                for (T remote : remotes) {
+                    if (currents != null && currents.contains(remote)) currents.remove(remote);
+                    m = clzz.getMethod("contains", Account.class, clzz);
+                    long localID = Long.parseLong(String.valueOf(m.invoke(null, account, remote)));
+                    //Log.v(TAG, "-> localId: " + localID);
+                    if (localID == 0) {
+                        //Log.v(TAG, "--> insert to local: " + remote);
+                        Uri uri;
+                        if (remote instanceof WithData) {
+                            long remoteSize = Api.getInstance().fileSize(account, ((WithData) remote).getData());
+                            Uri file = null;
+                            if (remoteSize > 0) file = Api.getInstance().download(account, ((WithData) remote).getData());
+                            m = clzz.getMethod("insert", Account.class, clzz, Uri.class, boolean.class);
+                            uri = (Uri) m.invoke(null, account, remote, file, true);
+                        } else {
+                            m = clzz.getMethod("insert", Account.class, clzz, boolean.class);
+                            uri = (Uri) m.invoke(null, account, remote, true);
+                        }
+                        if (uri != null) syncResult.stats.numInserts++;
+                    } else {
+                        remote.setId(localID);
+                        m = clzz.getMethod("select", Uri.class);
+                        T local = (T) m.invoke(null, remote.getUri());
+                        //Log.v(TAG, "local: " + local);
+                        m = clzz.getMethod("hasChange", clzz, clzz);
+                        boolean change = (Boolean) m.invoke(null, local, remote);
+                        boolean fileChange = false;
+                        if (remote instanceof WithData) {
+                            long localSize = !TextUtils.isEmpty(((WithData) local).getData()) ? getLocalFileSize(cr, local.getUri()) : 0;
+                            long remoteSize = Api.getInstance().fileSize(account, ((WithData) remote).getData());
+                            fileChange = remoteSize > 0 && localSize != remoteSize;
+                            //Log.v(TAG, "local: " + localSize + ", remote: " + remoteSize + ", change: " + fileChange);
+                            change = change || fileChange;
+                        }
+                        if (change) {
+                            //Log.v(TAG, "--> update to local: " + remote);
+                            int cnt;
+                            if (fileChange) {
+                                Uri file = Api.getInstance().download(account, ((WithData) remote).getData());
+                                m = clzz.getMethod("update", Account.class, clzz, Uri.class, boolean.class);
+                                cnt = (Integer) m.invoke(null, account, remote, file, true);
+                            } else {
+                                m = clzz.getMethod("update", Account.class, clzz, boolean.class);
+                                cnt = (Integer) m.invoke(null, account, remote, true);
+                            }
+                            if (cnt > 0) syncResult.stats.numUpdates++;
+                        }
+                    }
+                }
+                //Delete local removed on remote
+                if (currents != null && currents.size() > 0) {
+                    for (final T current : currents) {
+                        //Log.v(TAG, "--> deleted local: " + current + " (removed on remote)");
+                        m = clzz.getMethod("delete", Account.class, long.class, boolean.class);
+                        int cnt = (Integer) m.invoke(null, account, current.getId(), true);
+                        if (cnt > 0) syncResult.stats.numDeletes++;
+                    }
+                }
+            }
+        } catch (NoSuchMethodException e) {
+            if (!Constants.DEBUG) Log.e(TAG, "NoSuchMethodException" + e.getMessage());
+            else e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            if (!Constants.DEBUG) Log.e(TAG, "IllegalArgumentException" + e.getMessage());
+            else e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            if (!Constants.DEBUG) Log.e(TAG, "IllegalAccessException" + e.getMessage());
+            else e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            if (!Constants.DEBUG) Log.e(TAG, "InvocationTargetException" + e.getMessage());
+            else e.printStackTrace();
+        }
+    }
+
+    private static long getLocalFileSize(ContentResolver cr, Uri uri) {
+        try {
+            InputStream is = cr.openInputStream(uri);
+            if (is != null) return is.available();
+        } catch (IOException ignored) {}
+        return 0;
+    }
+}

@@ -1,0 +1,29 @@
+package {{ package }}.sync;
+
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+
+import {{ package }}.Constants;
+
+public class {{ provider }}SyncService extends Service {
+
+	public static final String TAG 							= Constants.APP_NAME + ".{{ provider }}SyncService";
+	private static final Object sSyncAdapterLock 			= new Object();
+	private static {{ provider }}SyncAdapter sSyncAdapter 			= null;
+
+	@Override
+	public void onCreate() {
+		synchronized (sSyncAdapterLock) {
+			if (sSyncAdapter == null) {
+				sSyncAdapter = new {{ provider }}SyncAdapter(getApplicationContext(), true);
+			}
+		}
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return sSyncAdapter.getSyncAdapterBinder();
+	}
+
+}
