@@ -8,7 +8,6 @@
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
-
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\AndroidAnnotation;
@@ -52,12 +51,19 @@ class EntityGenerator extends Generator {
     private function prepareEntities() {
         $providers = [];
         foreach ($this->metadata->getMetadata() as $meta) {
-            $name = $this->getProviderName($meta);
-            $providers[$name][] = $meta;
+            if (!$this->isIgnoredEntity($meta)) {
+                $name = $this->getProviderName($meta);
+                $providers[$name][] = $meta;
+            }
         }
         return $providers;
     }
 
+    private function isIgnoredEntity($meta) {
+        $reflectionClass = new \ReflectionClass($meta->getName());
+        $reader = new AnnotationReader();
+        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->ignored : false;
+    }
     private function getProviderName($meta) {
         $reflectionClass = new \ReflectionClass($meta->getName());
         $reader = new AnnotationReader();

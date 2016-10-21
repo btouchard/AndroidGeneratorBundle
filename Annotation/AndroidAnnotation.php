@@ -19,4 +19,11 @@ final class AndroidAnnotation {
      * @var string
      */
     public $provider;
+
+    /**
+     * Parameter ignored
+     *
+     * @var boolean
+     */
+    public $ignored;
 }

@@ -63,21 +63,21 @@ class AndroidAppCommand extends ContainerAwareCommand
         $this->twig = $this->getTwigEnvironment($skeletonDirs);
 
         $output->writeln([
-            '====================================================================================',
+            '==================================',
             'Android App Generator',
-            '====================================================================================',
-            'Android API: '.$androidVersion.' (min: '.$minSdkVersion.')',
-            'Android SDK path: '.$sdkPath,
-            'Gradle: '.$gradleVersion,
+            '==================================',
+            '<info>Android API: '.$androidVersion.' (min: '.$minSdkVersion.')</info>',
+            '<info>Android SDK path: '.$sdkPath.'</info>',
+            '<info>Gradle: '.$gradleVersion.'</info>',
             '',
         ]);
 
-        $question = new Question('Please enter the <info>App Name</info> [My App]: ', 'My App');
+        $appName = str_replace('Bundle', '', $bundle->getName());
+        $question = new Question('Please enter the <info>App Name</info> ['.$appName.']: ', $appName);
         $appName = $helper->ask($input, $output, $question);
-        $moduleName = preg_replace('/[\s_-]+/', '', ucwords($appName));
 
         // $path = dirname($kernel->getRootDir()) . '/android';
-        $path = '/home/benjamin/Documents/workspace/' . str_replace('Bundle', '', $bundle->getName());
+        $path = '/home/benjamin/Documents/workspace/' . $appName;
         $question = new Question('Please enter the <info>App final path</info> ['.$path.']: ', $path);
         $path = $helper->ask($input, $output, $question);
 
@@ -93,42 +93,42 @@ class AndroidAppCommand extends ContainerAwareCommand
         $tmp = array_reverse($tmp);
         $packageName = implode('.', $tmp) . '.' . preg_replace('/[\s_-]+/', '', strtolower($appName));
 
-        $manifestPath = $path . '/' . $moduleName . '/src/main';
+        $manifestPath = $path . '/app/src/main';
         $javaPath = $manifestPath . '/java/' . str_replace('.', '/', $packageName);
         $resPath = $manifestPath . '/res';
 
         $manager = new DisconnectedMetadataFactory($this->getContainer()->get('doctrine'));
         $metadata = $manager->getBundleMetadata($bundle);
 
-        $output->writeln('====================================================================================');
+        $output->writeln('==================================');
         $output->writeln('');
         $output->writeln('Generating App: "' . $appName . '" [package: ' . $packageName . ']');
-        $output->writeln('====================================================================================');
+        $output->writeln('==================================');
         $output->writeln('');
 
         if (!is_dir($path)) {
-            $this->output->write('Generate Android App Base in ' . $path);
+            $this->output->write('Generate Android application');
             $process = new Process("android create project --target android-$androidVersion --activity MainActivity --package $packageName --gradle --gradle-version $gradleVersion --path $path");
             $process->run();
             $this->output->writeln(' -> OK');
 
             $fs = new Filesystem();
-            $this->output->write('Prepare project structure...');
-            $fs->mkdir($path . '/' . $moduleName);
-            $fs->mkdir($path . '/' . $moduleName . '/libs');
-            $fs->rename($path . '/src', $path . '/' . $moduleName . '/src');
+            $this->output->write('Prepare project structure');
+            $fs->mkdir($path . '/app');
+            $fs->mkdir($path . '/app/libs');
+            $fs->rename($path . '/src', $path . '/app/src');
             $this->output->writeln(' -> <info>OK</info>');
         }
 
         $fileGenerator = new FileGenerator($this->twig, $packageName);
 
-        $this->output->write('Setting up project configuration...');
+        $this->output->write('Setting up project configuration');
         $fileGenerator->generate('root.build.gradle', $path . '/build.gradle', [ 'gradleVersion' => $gradleVersion ]);
         $fileGenerator->generate('gradle.properties', $path . '/gradle.properties');
         $fileGenerator->generate('local.properties', $path . '/local.properties', [ 'sdkPath' => $sdkPath ]);
-        $fileGenerator->generate('settings.gradle', $path . '/settings.gradle', [ 'moduleName' => $moduleName ]);
-        $fileGenerator->generate('proguard-rules.pro', $path.'/'.$moduleName . '/proguard-rules.pro');
-        $fileGenerator->generate('build.gradle', $path.'/'.$moduleName . '/build.gradle', [ 'androidVersion' => $androidVersion, 'minSdkVersion' => $minSdkVersion ]);
+        $fileGenerator->generate('settings.gradle', $path . '/settings.gradle', [ 'moduleName' => 'app' ]);
+        $fileGenerator->generate('proguard-rules.pro', $path.'/app/proguard-rules.pro');
+        $fileGenerator->generate('build.gradle', $path.'/app/build.gradle', [ 'androidVersion' => $androidVersion, 'minSdkVersion' => $minSdkVersion ]);
         $fileGenerator->setupConf($path.'/gradle/wrapper/gradle-wrapper.properties', '/gradle-([\.?\d])+-all/', 'gradle-2.14.1-all');
         $this->output->writeln(' -> <info>OK</info>');
 
@@ -139,7 +139,7 @@ class AndroidAppCommand extends ContainerAwareCommand
         $entityNames = $entityGenerator->extractEntityNames();
         $this->output->writeln(' -> <info>OK</info>');
 
-        $this->output->write('Preparing Android application base...');
+        $this->output->write('Preparing Android application base');
 
         $fileGenerator->generate('AndroidManifest.xml', $manifestPath.'/AndroidManifest.xml', [
             'permissions' => ['INTERNET', 'AUTHENTICATE_ACCOUNTS', 'GET_ACCOUNTS', 'USE_CREDENTIALS', 'MANAGE_ACCOUNTS', 'WRITE_SYNC_SETTINGS', 'WRITE_SETTINGS', 'WRITE_EXTERNAL_STORAGE'],
