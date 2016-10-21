@@ -156,7 +156,8 @@ class AndroidAppCommand extends ContainerAwareCommand
         $fileGenerator->generate('DatabaseHelper.java', $javaPath.'/helpers/DatabaseHelper.java', ['entities' => $entityNames]);
         $fileGenerator->generate('BaseSyncAdapter.java', $javaPath.'/sync/BaseSyncAdapter.java');
 
-        foreach (['AccountActivity', 'Authenticator', 'AuthService'] as $class)
+        $fileGenerator->generate('AccountActivity.java', $javaPath.'/authenticator/AccountActivity.java', ['providers' => $providerNames]);
+        foreach (['Authenticator', 'AuthService'] as $class)
             $fileGenerator->generate($class.'.java', $javaPath.'/authenticator/'.$class.'.java');
         $fileGenerator->generate('account_auth.xml', $resPath.'/layout/account_auth.xml');
 

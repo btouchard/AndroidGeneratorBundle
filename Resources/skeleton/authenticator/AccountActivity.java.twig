@@ -17,7 +17,7 @@ import {{ package }}.Constants;
 import {{ package }}.R;
 import {{ package }}.console.*;
 import {{ package }}.helpers.AccountHelper;
-import {{ package }}.providers.NoteProvider;
+import {{ package }}.providers.*;
 import {{ package }}.utils.StringUtils;
 
 public class AccountActivity extends AccountAuthenticatorActivity {
@@ -77,14 +77,16 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         } else {
             mAccountManager.addAccountExplicitly(account, null, user);
             mAccountManager.setPassword(account, pwd);
-
-            ContentResolver.setSyncAutomatically(account, NoteProvider.AUTHORITY, true);
-
+{% for provider in providers %}
+            ContentResolver.setSyncAutomatically(account, {{ provider }}Provider.AUTHORITY, true);
+{% endif %}
             long delay = Integer.parseInt(user.getString(UserColumns.UPDATE_DELAY, "0")) * 60;
             if (delay > 0) {
                 Bundle extras = new Bundle();
                 extras.putLong("periodic_sync", delay);
-                ContentResolver.addPeriodicSync(account, NoteProvider.AUTHORITY, extras, delay);
+{% for provider in providers %}
+                ContentResolver.addPeriodicSync(account, {{ provider }}Provider.AUTHORITY, extras, delay);
+{% endif %}
             }
         }
         final Intent intent = new Intent();
