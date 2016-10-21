@@ -21,11 +21,13 @@
     "doctrine/doctrine-bundle": "^1.6"
   },
   "autoload" : {
-    "psr-0" : {
-      "Kolapsis\\Bundle\\AndroidGeneratorBundle" : ""
+    "psr-4" : {
+      "Kolapsis\\Bundle\\AndroidGeneratorBundle\\" : ""
     }
   },
   "repositories" : [{
+    "type" : "vcs",
+    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
   }],
   "extra" : {
     "branch-alias" : {
