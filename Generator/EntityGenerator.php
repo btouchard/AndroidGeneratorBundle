@@ -64,10 +64,15 @@ class EntityGenerator extends Generator {
         $reader = new AnnotationReader();
         return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->ignored : false;
     }
+    private function isAnonymousAccess($meta) {
+        $reflectionClass = new \ReflectionClass($meta->getName());
+        $reader = new AnnotationReader();
+        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->anonymousAccess : false;
+    }
     private function getProviderName($meta) {
         $reflectionClass = new \ReflectionClass($meta->getName());
         $reader = new AnnotationReader();
-        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->provider : 'Entity';
+        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->provider.'s' : 'Entities';
     }
 
     private function generateProvider($provider, $entities) {
@@ -111,6 +116,7 @@ class EntityGenerator extends Generator {
 
     private function generateEntity($provider, $entity) {
         $entityName = $this->getEntityName($entity->getName());
+        $anonymousAccess = $this->isAnonymousAccess($entity);
         $this->output->write('Generate: Entity ' . $entityName);
         $target = $this->javaPath . '/entity/' . $entityName . '.java';
         $withData = !empty($entity->getLifecycleCallbacks('postPersist'));
@@ -125,6 +131,7 @@ class EntityGenerator extends Generator {
         $params = [
             'package' => $this->packageName,
             'entityName' => $entityName,
+            'anonymousAccess' => $anonymousAccess,
             'withData' => $withData,
             'providerName' => $provider,
             'directoryId' => self::$DIRECTORY_ID,
@@ -155,6 +162,10 @@ class EntityGenerator extends Generator {
             foreach ($entities as $entity)
                 $names[] = $this->getEntityName($entity->getName());
         return $names;
+    }
+
+    public function extractUserClass() {
+
     }
 
     private function getEntityName($entity) {

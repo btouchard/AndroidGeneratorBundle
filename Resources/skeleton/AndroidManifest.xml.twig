@@ -36,6 +36,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+{% for provider in providers %}
 
+        <!-- {{ provider }} -->
+        <provider
+                android:name=".providers.{{ provider }}Provider"
+                android:authorities="@string/provider_{{ provider|lower }}_authority"
+                android:exported="true"
+                android:label="@string/provider_{{ provider|lower }}_label"
+                android:syncable="true"/>
+
+        <service
+                android:name=".sync.{{ provider }}SyncService"
+                android:exported="false">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter"/>
+            </intent-filter>
+
+            <meta-data
+                    android:name="android.content.SyncAdapter"
+                    android:resource="@xml/syncadapter_{{ provider|lower }}"/>
+        </service>
+{% endfor %}
     </application>
 </manifest>

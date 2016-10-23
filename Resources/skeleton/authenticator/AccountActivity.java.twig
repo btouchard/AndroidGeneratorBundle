@@ -3,6 +3,7 @@ package {{ package }}.authenticator;
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
+import android.accounts.AuthenticatorException;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
@@ -11,7 +12,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import {{ package }}.Constants;
 import {{ package }}.R;
@@ -20,6 +20,8 @@ import {{ package }}.helpers.AccountHelper;
 import {{ package }}.providers.*;
 import {{ package }}.utils.StringUtils;
 
+import java.io.IOException;
+
 public class AccountActivity extends AccountAuthenticatorActivity {
 
     public static final String TAG = Constants.APP_NAME + ".AccountActivity";
@@ -27,7 +29,6 @@ public class AccountActivity extends AccountAuthenticatorActivity {
     private AccountManager mAccountManager;
     private ProgressDialog mProgressDialog;
     private Boolean mConfirmCredentials;
-    private String mUsername, mPassword;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -37,10 +38,17 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         AccountHelper.setContext(this);
         mAccountManager = AccountManager.get(this);
 
-        mUsername = getIntent().getStringExtra(Authenticator.PARAM_USERNAME);
+        String username = getIntent().getStringExtra(Authenticator.PARAM_USERNAME);
         mConfirmCredentials = getIntent().getBooleanExtra(Authenticator.PARAM_CONFIRM_CREDENTIALS, false);
 
-        ((Button) findViewById(R.id.submit)).setOnClickListener(new View.OnClickListener() {
+        if (!StringUtils.isEmpty(username)) {
+            ((EditText) findViewById(R.id.username)).setText(username);
+        }
+        if (Constants.DEBUG) {
+            ((EditText) findViewById(R.id.username)).setText("benjamin");
+            ((EditText) findViewById(R.id.password)).setText("benpass");
+        }
+        findViewById(R.id.submit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 EditText userName = (EditText) findViewById(R.id.username);
@@ -53,11 +61,14 @@ public class AccountActivity extends AccountAuthenticatorActivity {
 
     private void finishConfirmCredentials(Bundle user) {
         Log.i(TAG, "finishConfirmCredentials()");
-        String email = user.getString(UserColumns.USERNAME);
-        Log.i(TAG, "-> email: " + email);
-        final Account account = AccountHelper.getAccountByTypeAndName(Constants.ACCOUNT_TYPE, email);
+        String username = user.getString(UserColumns.USERNAME);
+        String pwd = user.getString(UserColumns.PASSWORD);
+        user.remove(UserColumns.USERNAME);
+        user.remove(UserColumns.PASSWORD);
+        Log.i(TAG, "-> username: " + username + ", pwd: " + pwd);
+        final Account account = AccountHelper.getAccountByTypeAndName(Constants.ACCOUNT_TYPE, username);
         if (account == null) return;
-        mAccountManager.setPassword(account, user.getString(UserColumns.PASSWORD));
+        mAccountManager.setPassword(account, pwd);
         final Intent intent = new Intent();
         intent.putExtra(AccountManager.KEY_BOOLEAN_RESULT, true);
         intent.putExtra(AccountManager.KEY_PASSWORD, user.getString(UserColumns.PASSWORD));
@@ -71,23 +82,20 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         Log.i(TAG, "-> user: " + user);
         String username = user.getString(UserColumns.USERNAME);
         String pwd = user.getString(UserColumns.PASSWORD);
+        user.remove(UserColumns.USERNAME);
+        user.remove(UserColumns.PASSWORD);
         final Account account = new Account(username, Constants.ACCOUNT_TYPE);
-        if (mConfirmCredentials) {
-            mAccountManager.setPassword(account, pwd);
-        } else {
-            mAccountManager.addAccountExplicitly(account, null, user);
-            mAccountManager.setPassword(account, pwd);
+        mAccountManager.addAccountExplicitly(account, pwd, user);
 {% for provider in providers %}
-            ContentResolver.setSyncAutomatically(account, {{ provider }}Provider.AUTHORITY, true);
-{% endif %}
-            long delay = Integer.parseInt(user.getString(UserColumns.UPDATE_DELAY, "0")) * 60;
-            if (delay > 0) {
-                Bundle extras = new Bundle();
-                extras.putLong("periodic_sync", delay);
+        ContentResolver.setSyncAutomatically(account, {{ provider }}Provider.AUTHORITY, true);
+{% endfor %}
+        long delay = Integer.parseInt(user.getString(UserColumns.UPDATE_DELAY, "0")) * 60;
+        if (delay > 0) {
+            Bundle extras = new Bundle();
+            extras.putLong("periodic_sync", delay);
 {% for provider in providers %}
-                ContentResolver.addPeriodicSync(account, {{ provider }}Provider.AUTHORITY, extras, delay);
-{% endif %}
-            }
+            ContentResolver.addPeriodicSync(account, {{ provider }}Provider.AUTHORITY, extras, delay);
+{% endfor %}
         }
         final Intent intent = new Intent();
         intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, username);
@@ -97,18 +105,30 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         finish();
     }
 
-    private class LoginTask extends AsyncTask<String, Void, String> {
+    private class LoginTask extends AsyncTask<String, Void, Bundle> {
 
         @Override
-        protected String doInBackground(String... voids) {
-            return null;
+        protected Bundle doInBackground(String... strings) {
+            String username = strings[0];
+            String password = strings[1];
+            Bundle user = null;
+            try {
+                String token = Api.getInstance().authenticate(username, password);
+                if (token != null)
+                    user = Api.getInstance().loadUser(token, password);
+            } catch (AuthenticatorException e) {
+                Log.e(TAG, "AuthenticatorException: " + e.getMessage(), e);
+            } catch (IOException e) {
+                Log.e(TAG, "IOException: " + e.getMessage(), e);
+            }
+            return user;
         }
 
         @Override
-        protected void onPostExecute(String token) {
-            if (!StringUtils.isEmpty(token)) {
-                if (mConfirmCredentials) finishConfirmCredentials(null);
-                else finishLogin(null);
+        protected void onPostExecute(Bundle user) {
+            if (user != null && !StringUtils.isEmpty(user.getString(UserColumns.TOKEN))) {
+                if (mConfirmCredentials) finishConfirmCredentials(user);
+                else finishLogin(user);
             } else {
                 new AlertDialog.Builder(AccountActivity.this)
                         .setTitle("Account").setMessage("Auth error")

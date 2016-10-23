@@ -63,6 +63,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import android.util.Log;
 
@@ -163,6 +164,11 @@ public class HttpData extends Thread {
 	
 	public HttpData setProgressListener(ProgressListener l) {
 		mListener = l;
+		return this;
+	}
+
+	public HttpData bearer(String value) {
+		this.headers.add(new BasicHeader("Authorization", "Bearer " + value));
 		return this;
 	}
 
@@ -438,16 +444,22 @@ public class HttpData extends Thread {
 		}
 		return content;
 	}
+
 	public JSONObject asJSONObject() {
-		if (this.json == null) {
-			try {
-				this.json = new JSONObject();
-				if (this.asString().startsWith("{") && this.asString().endsWith("}")) this.json = new JSONObject(this.asString());
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		try {
+			if (this.asString().startsWith("{") && this.asString().endsWith("}")) return new JSONObject(this.asString());
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		return this.json;
+		return null;
+	}
+	public JSONArray asJSONArray() {
+		try {
+			if (this.asString().startsWith("[") && this.asString().endsWith("]")) return new JSONArray(this.asString());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	public List<Cookie> getCookies() {

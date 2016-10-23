@@ -72,16 +72,16 @@ class TwigFormatterExtension extends \Twig_Extension {
      * Perform Slug transform
      *
      * @param string $subject
-     * @param string $replacement
      * @return string
      */
-    public function _slug($subject, $replacement='_')
+    public function _slug($subject)
     {
         if (!isset($subject)) {
             return null;
         }
         else {
-            return preg_replace('/[\s_-]+/', $replacement, strtolower($subject));
+            return strtolower(preg_replace('/\B([A-Z])/', '_$1', $subject));
+            //return preg_replace('/[\s_-]+/', $replacement, strtolower($subject));
         }
     }
 

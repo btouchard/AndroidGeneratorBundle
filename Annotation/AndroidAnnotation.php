@@ -26,4 +26,11 @@ final class AndroidAnnotation {
      * @var boolean
      */
     public $ignored;
+
+    /**
+     * Parameter anonymousAccess
+     *
+     * @var boolean
+     */
+    public $anonymousAccess;
 }

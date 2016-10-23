@@ -84,7 +84,8 @@ class AndroidAppCommand extends ContainerAwareCommand
         $question = new Question('Please enter the <info>App domain name</info> [kolapsis.com]: ', 'kolapsis.com');
         $domainName = $helper->ask($input, $output, $question);
 
-        $apiUrl = 'http://' . preg_replace('/[\s_-]+/', '', strtolower($appName)) . '.' . $domainName;
+        //$apiUrl = 'http://' . preg_replace('/[\s_-]+/', '', strtolower($appName)) . '.' . $domainName;
+        $apiUrl = 'http://192.168.0.28/FullApp/web/api';
 
         $question = new Question('Please enter the <info>App API url</info> ['.$apiUrl.']: ', $apiUrl);
         $apiUrl = $helper->ask($input, $output, $question);
@@ -143,11 +144,16 @@ class AndroidAppCommand extends ContainerAwareCommand
 
         $fileGenerator->generate('AndroidManifest.xml', $manifestPath.'/AndroidManifest.xml', [
             'permissions' => ['INTERNET', 'AUTHENTICATE_ACCOUNTS', 'GET_ACCOUNTS', 'USE_CREDENTIALS', 'MANAGE_ACCOUNTS', 'WRITE_SYNC_SETTINGS', 'WRITE_SETTINGS', 'WRITE_EXTERNAL_STORAGE'],
+            'providers' => $providerNames,
         ]);
+
         $fileGenerator->generate('authenticator.xml', $resPath.'/xml/authenticator.xml', ['appName' => $appName]);
+        foreach ($providerNames as $provider)
+            $fileGenerator->generate('syncadapter_provider.xml', $resPath.'/xml/syncadapter_'.strtolower($provider).'.xml', ['provider' => $provider]);
+
         $fileGenerator->generate('colors.xml', $resPath.'/values/colors.xml', ['appName' => $appName]);
         $fileGenerator->generate('dimens.xml', $resPath.'/values/dimens.xml', ['appName' => $appName]);
-        $fileGenerator->generate('strings_auth.xml', $resPath.'/values/strings_auth.xml', ['appName' => $appName]);
+        $fileGenerator->generate('strings_auth.xml', $resPath.'/values/strings_auth.xml', ['appName' => $appName, 'providers' => $providerNames]);
         $fileGenerator->generate('styles.xml', $resPath.'/values/styles.xml', ['appName' => $appName]);
 
         $fileGenerator->generate('Constants.java', $javaPath.'/Constants.java', ['appName' => $appName, 'apiUrl' => $apiUrl]);
@@ -161,8 +167,10 @@ class AndroidAppCommand extends ContainerAwareCommand
             $fileGenerator->generate($class.'.java', $javaPath.'/authenticator/'.$class.'.java');
         $fileGenerator->generate('account_auth.xml', $resPath.'/layout/account_auth.xml');
 
-        foreach (['Api', 'UserColumns'] as $class)
-            $fileGenerator->generate($class.'.java', $javaPath.'/console/'.$class.'.java');
+        $userColumns = $this->getUserColumns($manager);
+        $fileGenerator->generate('Api.java', $javaPath.'/console/Api.java', ['columns' => $userColumns]); //, ['providers' => $providerNames, 'entities' => $entityNames]
+        $fileGenerator->generate('UserColumns.java', $javaPath.'/console/UserColumns.java', ['columns' => $userColumns]);
+
         foreach (['CloseUtils', 'BitmapUtils', 'FileUtils', 'HttpData', 'StringUtils'] as $class)
             $fileGenerator->generate($class.'.java', $javaPath.'/utils/'.$class.'.java');
         $this->output->writeln(' -> <info>OK</info>');
@@ -219,5 +227,16 @@ class AndroidAppCommand extends ContainerAwareCommand
         foreach ($finder as $sub) {
             $skeletonDirs[] = $sub->getPathname();
         }
+    }
+
+    private function getUserColumns($manager) {
+        $columns = [];
+        $class = $this->getContainer()->get('fos_user.user_manager')->getClass();
+        if ($class != null) {
+            $meta = $manager->getClassMetadata($class);
+            $excludes = ['id'];
+            $columns = array_diff($meta->getMetaData()[0]->getColumnNames(), $excludes);
+        }
+        return $columns;
     }
 }

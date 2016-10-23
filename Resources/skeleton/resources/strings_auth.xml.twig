@@ -9,4 +9,9 @@
     <string name="password_hint">Votre mot de passe</string>
     <string name="submit_login">Connexion</string>
     <string name="close_alert">Fermer</string>
+
+{% for provider in providers %}
+    <string name="provider_{{ provider|lower }}_label">{{ provider }}</string>
+    <string name="provider_{{ provider|lower }}_authority">{{ package }}.providers.{{ provider }}</string>
+{% endfor %}
 </resources>

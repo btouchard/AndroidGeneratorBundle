@@ -133,7 +133,7 @@ public abstract class Entity {
      * @throws AuthenticatorException Erreur d'authentification
      * @throws IOException Erreur de connexion au server
      */
-    public static <T extends Entity> void performSync(final Class<T> clzz, final Account account, final boolean fullSync, final long lastSync, final ContentResolver cr, final SyncResult syncResult) throws AuthenticatorException, IOException {
+    public static <T extends Entity> void performSync(Class<T> clzz, Account account, boolean fullSync, long lastSync, ContentResolver cr, SyncResult syncResult) throws AuthenticatorException, IOException {
         if (Constants.DEBUG) Log.i(TAG, "-> performSync: " + clzz.getName().substring(clzz.getName().lastIndexOf(".") + 1) + ", fullSync: " + fullSync + ", lastSync: " + lastSync);
         try {
             Method m;
@@ -263,7 +263,7 @@ public abstract class Entity {
                 }
                 //Delete local removed on remote
                 if (currents != null && currents.size() > 0) {
-                    for (final T current : currents) {
+                    for (T current : currents) {
                         //Log.v(TAG, "--> deleted local: " + current + " (removed on remote)");
                         m = clzz.getMethod("delete", Account.class, long.class, boolean.class);
                         int cnt = (Integer) m.invoke(null, account, current.getId(), true);

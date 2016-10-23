@@ -1,17 +1,20 @@
 package {{ package }}.entity;
 
 import android.accounts.Account;
+import android.accounts.AuthenticatorException;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.CursorLoader;
 import android.util.Log;
 
 import {{ package }}.Constants;
+import com.kolapsis.app.console.Api;
 import {{ package }}.helpers.Entity;
 import {{ package }}.providers.{{ providerName }}Provider;
 import {{ package }}.utils.CloseUtils;
@@ -23,6 +26,7 @@ import {{ package }}.utils.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 {% if withData %}
 import java.io.*;
 {% endif %}
@@ -150,6 +154,32 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         }
     }
 
+{% if anonymousAccess %}
+    public static class Async{{ entityName }}Task extends AsyncTask<Void, Void, List<{{ entityName }}>> {
+        @Override
+        protected List<{{ entityName }}> doInBackground(Void... voids) {
+            try {
+                return Api.getInstance().load({{ entityName }}.class, 0);
+            } catch (AuthenticatorException | IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            return null;
+        }
+    }
+{% else %}
+    public static class Async{{ entityName }}Task extends AsyncTask<Account, Void, List<{{ entityName }}>> {
+        @Override
+        protected List<{{ entityName }}> doInBackground(Account... accounts) {
+            try {
+                return Api.getInstance().load({{ entityName }}.class, accounts[0], 0);
+            } catch (AuthenticatorException | IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            return null;
+        }
+    }
+{% endif %}
+
     public static List<{{ entityName }}> getMarkedAs(Account account, MarkedAs mark) {
         return select(account, mark.value());
     }
@@ -168,11 +198,11 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
     public static boolean hasChange({{ entityName }} local, {{ entityName }} remote) {
         if (local == null || remote == null) return false;
 {% for property in properties %}
-    {% if property.type in ['bool', 'int', 'long', 'float', 'double'] %}
+{% if property.type in ['bool', 'int', 'long', 'float', 'double'] %}
         if (local.{{ property.name|attrName }} != remote.{{ property.name|attrName }}) return true;
-    {% else %}
-        if (!local.{{ property.name|attrName }}.equals(remote.{{ property.name|attrName }})) return true;
-    {% endif %}
+{% else %}
+        if (local.{{ property.name|attrName }} != null && remote.{{ property.name|attrName }} != null && !local.{{ property.name|attrName }}.equals(remote.{{ property.name|attrName }})) return true;
+{% endif %}
 {% endfor %}
         return false;
     }
@@ -371,7 +401,10 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 {% endif %}
 
     public final String getApiPath() {
-        return {{ entityName }}.TABLE;
+        String[] table = {{ entityName }}.TABLE.split("_");
+        for (int i=0; i<table.length; i++)
+        if (!table[i].endsWith("s")) table[i] += "s";
+        return StringUtils.join(table, "/");
     }
 
     @Override
@@ -379,7 +412,8 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         super.fromJSON(account, json);
         try {
 {% for property in properties %}
-            set{{ property.name|attrName|ucfirst }}(json.get{{ property.type|ucfirst }}(Columns.{{ property.name|sqlName|upper }}));
+            if (json.has(Columns.{{ property.name|sqlName|upper }}))
+                set{{ property.name|attrName|ucfirst }}(json.get{{ property.type|ucfirst }}(Columns.{{ property.name|sqlName|upper }}));
 {% endfor %}
         } catch (JSONException e) {
             Log.e(TAG, "JSONException: " + e.getMessage());
