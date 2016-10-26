@@ -4,6 +4,7 @@
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Annotation;
+use Doctrine\Common\Annotations\Annotation\Required;
 
 /**
  * Annotation for Android Entity definition
@@ -45,7 +46,7 @@ final class Entity {
     public $tableName;
 
     /**
-     * Use to ignore class in Android Project
+     * Use to ignore class in Android Project (default = false)
      *
      * @var boolean
      */

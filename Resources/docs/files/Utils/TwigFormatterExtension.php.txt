@@ -6,7 +6,7 @@
  * Time: 16:11
  */
 
-namespace Kolapsis\Bundle\AndroidGeneratorBundle\Twig;
+namespace Kolapsis\Bundle\AndroidGeneratorBundle\Utils;
 
 
 class TwigFormatterExtension extends \Twig_Extension {

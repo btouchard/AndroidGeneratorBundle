@@ -11,7 +11,9 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\Table;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\EntityFile;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Exception\GeneratorException;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -80,9 +82,9 @@ final class EntityGenerator extends Generator {
     /**
      * Generate Android ContentProvider's
      * @param string $provider
-     * @param ClassMetadataCollection $entities
+     * @param array $entities
      */
-    private function generateProvider($provider, ClassMetadataCollection $entities) {
+    private function generateProvider($provider, $entities) {
         $this->output->write('Generate: ' . $provider . 'Provider');
         $target = $this->javaPath . '/providers/' . $provider . 'Provider.java';
         // echo '-> target:' . $target . PHP_EOL;
@@ -97,10 +99,10 @@ final class EntityGenerator extends Generator {
     /**
      * Generate Android SyncService and SyncAdapter
      * @param string $provider
-     * @param ClassMetadataCollection $entities
+     * @param array $entities
      * @param bool $anonymous
      */
-    private function generateSync($provider, ClassMetadataCollection $entities, $anonymous) {
+    private function generateSync($provider, $entities, $anonymous) {
         $this->output->write('Generate: ' . $provider . 'SyncService');
         $target = $this->javaPath . '/sync/' . $provider . 'SyncService.java';
         // echo '-> target:' . $target . PHP_EOL;
@@ -129,12 +131,11 @@ final class EntityGenerator extends Generator {
      */
     private function generateEntity($provider, ClassMetadata $entity, $anonymous) {
         $entityName = $this->parser->getEntityName($entity->getName());
-        $mappings = $this->getAssociationMappings($entity);
         $this->output->write('Generate: Entity ' . $entityName);
+        $mappings = $this->getAssociationMappings($entity);
         $target = $this->javaPath . '/entity/' . $entityName . '.java';
-        $withData = !empty($entity->getLifecycleCallbacks('postPersist'));
-        $dataPropertyName = $withData ? $this->getDataPropertyName($entity) : null;
-
+        $filePropertyName = $this->getFilePropertyName($entity);
+        $withData = !empty($filePropertyName); //!empty($entity->getLifecycleCallbacks('postPersist'));
         $properties = [];
         foreach ($mappings as $mapping) {
             foreach ($mapping['joinColumns'] as $column => $targetColumn) {
@@ -143,7 +144,7 @@ final class EntityGenerator extends Generator {
             }
         }
         foreach ($entity->getFieldNames() as $name) {
-            if (in_array($name, ['id', 'sourceId', 'account', 'data', $dataPropertyName])) continue;
+            if (in_array($name, ['id', 'sourceId', 'account', 'data', $filePropertyName])) continue;
             $field = $entity->getFieldMapping($name);
             $properties[] = [ 'type' => $this->typeToJava($field['type']), 'name' => $field['fieldName'] ];
         }
@@ -156,7 +157,7 @@ final class EntityGenerator extends Generator {
             'providerName' => $provider,
             'directoryId' => self::$DIRECTORY_ID,
             'properties' => $properties,
-            'dataPropertyName' => $dataPropertyName,
+            'filePropertyName' => $filePropertyName,
         ];
         self::$DIRECTORY_ID += 2;
 
@@ -203,16 +204,15 @@ final class EntityGenerator extends Generator {
      * @param ClassMetadata $entity
      * @return null|string
      */
-    private function getDataPropertyName(ClassMetadata $entity) {
+    private function getFilePropertyName(ClassMetadata $entity) {
         $reflectionClass = new \ReflectionClass($entity->getName());
         $reader = new AnnotationReader();
-        foreach ($reflectionClass->getProperties() as $property) {
-            $annotations = $reader->getPropertyAnnotations($property);
-            foreach ($annotations as $annotation) {
-                if ($annotation instanceof File)
-                    return $property->getName();
-            }
-        }
+        $annotations = $reader->getClassAnnotation($reflectionClass, EntityFile::class);
+        if (!empty($annotations->field))
+            if (in_array($annotations->field, $entity->getFieldNames()))
+                return $annotations->field;
+            else
+                throw new GeneratorException("Field " . $annotations->field . " must be defined in " . $entity->getName());
         return null;
     }
 

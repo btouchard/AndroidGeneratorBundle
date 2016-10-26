@@ -1,0 +1,206 @@
+<?php
+/**
+ * Class ApiController
+ */
+
+namespace Kolapsis\Bundle\AndroidGeneratorBundle\Controller;
+
+use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
+use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
+use Doctrine\Common\Annotations\AnnotationReader;
+use FOS\RestBundle\Controller\Annotations\Route;
+use FOS\RestBundle\Controller\Annotations\View;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\ApiPath;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\KernelInterface;
+
+/**
+ * Expose Bundle entity with RESTFull Api
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Generator
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
+ */
+class ApiController extends Controller implements ContainerAwareInterface {
+
+    /**
+     * Application kernel
+     * @var KernelInterface
+     */
+    private $kernel;
+
+    /**
+     * Web root (use for file access)
+     * @var string
+     */
+    private $webRoot;
+
+    /**
+     * Doctrine\ORM Metadata
+     * @var DisconnectedMetadataFactory
+     */
+    private $manager;
+
+
+    /**
+     * {@inheritdoc}
+     * @param ContainerInterface $container
+     */
+    public function setContainer(ContainerInterface $container = null) {
+        parent::setContainer($container);
+        $this->kernel = $container->get('kernel');
+        $this->webRoot = realpath($this->kernel->getRootDir() . '/../web');
+        $this->manager = new DisconnectedMetadataFactory($container->get('doctrine'));
+    }
+
+    /**
+     * Return current user if authenticated (use by Android App to check token)
+     * @Route("/me", methods={"GET"}, name="api_me")
+     * @View(serializerGroups={"Default","Me", "Details"})
+     * @return mixed
+     */
+    public function getMeAction(){
+        return $this->getUser();
+    }
+
+    /*******************************************************
+     *** Entity ********************************************
+     ******************************************************/
+
+    /**
+     * Return json entity collection
+     * @Route("/{entityName}", requirements={"entityName"="[\w_]+"}, methods={"GET"}, name="api_get_entities")
+     * @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @return array
+     */
+    public function getAction(Request $request, $entityName) {
+        $entity = $this->getEntity($request, $entityName);
+        if ($entity)
+            return $this->getDoctrine()->getRepository($entity->getName())->findAll();
+        throw $this->createNotFoundException();
+    }
+
+    /**
+     * Insert entity
+     * @Route("/{entityName}", requirements={"entityName"="[\w_]+"}, methods={"POST"}, name="api_post_author")
+     * @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @return array
+     */
+    public function postAuthorAction(Request $request, $entityName) {
+
+    }
+
+    /**
+     * Update entity
+     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"PUT"}, name="api_put_author")
+     * @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @param $id
+     * @return array
+     */
+    public function putAuthorAction(Request $request, $entityName, $id) {
+
+    }
+
+    /**
+     * Delete entity
+     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"DELETE"}, name="api_delete_author")
+     * @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @param $id
+     */
+    public function deleteAuthorAction(Request $request, $entityName, $id) {
+
+    }
+
+    /**
+     * Check, Read and Save entity file
+     * @Route("/{entityName}/{id}/{field}", requirements={"entityName"="[\w_]+", "id"="\d+", "path"="[\w_]+"}, methods={"HEAD","GET","POST"}, name="api_file")
+     * @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @param $id
+     * @param $field
+     * @return object
+     */
+    public function fileAction(Request $request, $entityName, $id, $field) {
+        $entity = $this->getEntity($request, $entityName);
+        $entity = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        if (!is_object($entity)) throw $this->createNotFoundException();
+        $path = realpath($entity->getAbsolutePath());
+        switch ($request->getMethod()) {
+            case 'HEAD':
+                return new Response('', 200, ['Content-Length' => is_file($path) ? filesize($path) : 0]);
+            case 'POST':
+                $file = $request->files->get($field);
+                if ($file != null && $file->getError() == 0) {
+                    $entity->setFile($file);
+                    $em = $this->get('doctrine.orm.entity_manager');
+                    $em->persist($entity);
+                    $em->flush();
+                    return $entity;
+                }
+                throw new BadRequestHttpException("Exceeded file size");
+            default:
+                if (!is_file($path)) throw $this->createNotFoundException();
+                return new BinaryFileResponse($path);
+        }
+    }
+
+
+    /*******************************************************
+     *** PRIVATE *******************************************
+     ******************************************************/
+
+    /**
+     * Extract providers and entities from metadata
+     *
+     * @param ClassMetadataCollection $metadata
+     * @return array
+     */
+    private function parseBundle(ClassMetadataCollection $metadata) {
+        $routes = [];
+        foreach ($metadata->getMetadata() as $meta) {
+            $reflectionClass = new \ReflectionClass($meta->getName());
+            $reader = new AnnotationReader();
+            $annotation = $reader->getClassAnnotation($reflectionClass, ApiPath::class);
+            if ($annotation && $annotation->path) {
+                //dump($meta->getName(), $annotation->path);
+                $routes[$annotation->path] = $meta;
+            }
+        }
+        return $routes;
+    }
+
+    /**
+     * Return entity for request path
+     * @param Request $request
+     * @param $path
+     * @return mixed|null
+     */
+    private function getEntity(Request $request, $path) {
+        $controller = $request->attributes->get('_controller');
+        $bundleName = preg_replace("/(\\w+).*/", "$1", $controller);
+        $bundle = $this->kernel->getBundle($bundleName);
+        $metadata = $this->manager->getBundleMetadata($bundle);
+        $routes = $this->parseBundle($metadata);
+        if (isset($routes[$path])) {
+            return $routes[$path];
+        }
+        return null;
+    }
+
+}
+

@@ -1,6 +1,6 @@
 <?php
 /**
- * Class CreateAppCommand
+ * Class GenerateAndroidApp
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Command;
@@ -10,7 +10,7 @@ use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\EntityGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\FileGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\GradleGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Twig\TwigFormatterExtension;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Utils\TwigFormatterExtension;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,14 +26,13 @@ use Symfony\Component\Process\Process;
 /**
  * Core command to create an Android project based on your Bundle
  *
- * This class define a new command "android:app:create" in your application
- * for generating Android application with account and authentication, content providers and sync system
- * all based on your entity defined in your bundle
+ * This class define a new command "generate:android:app" in your application
+ * for generating Android application with account and authentication, content providers and sync system all based on your entities defined in your bundle
  *
  * @package Kolapsis\Bundle\AndroidGeneratorBundle\Command
  * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
-final class CreateAppCommand extends ContainerAwareCommand {
+final class AndroidAppCommand extends ContainerAwareCommand {
 
     /**
      * Enable/Disable debug
@@ -54,13 +53,13 @@ final class CreateAppCommand extends ContainerAwareCommand {
     private $output;
 
     /**
-     * Configure command
+     * {@inheritdoc}
      */
     protected function configure() {
         $this
-            ->setName('android:app:create')
-            ->setDescription('Creates Android app.')
-            ->setHelp("This command allows you to create an Android App from yor application...")
+            ->setName('generate:android:app')
+            ->setDescription('Generate/update Android application from Bundle.')
+            ->setHelp("Generating Android application with account and authentication, content providers and sync system all based on your entities defined in your bundle")
             ->addArgument('bundle', InputArgument::REQUIRED, 'Target bundle')
             ->addOption('android', 'a', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'App Android version', [24, 21])
             ->addOption('sdk', 's', InputOption::VALUE_REQUIRED, 'Android SDK path', '/opt/android-sdk')
@@ -69,10 +68,7 @@ final class CreateAppCommand extends ContainerAwareCommand {
     }
 
     /**
-     * Execute command
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return void
+     * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output) {
         $this->output = $output;
@@ -107,7 +103,7 @@ final class CreateAppCommand extends ContainerAwareCommand {
         $question = new Question('Please enter the <info>App Name</info> ['.$appName.']: ', $appName);
         $appName = $helper->ask($input, $output, $question);
 
-        if (CreateAppCommand::$DEBUG) $path = '/home/benjamin/Documents/workspace/' . $appName;
+        if (AndroidAppCommand::$DEBUG) $path = '/home/benjamin/Documents/workspace/' . $appName;
         else $path = dirname($kernel->getRootDir()) . '/android';
 
         $question = new Question('Please enter the <info>App final path</info> ['.$path.']: ', $path);
@@ -116,7 +112,7 @@ final class CreateAppCommand extends ContainerAwareCommand {
         $question = new Question('Please enter the <info>App domain name</info> [kolapsis.com]: ', 'kolapsis.com');
         $domainName = $helper->ask($input, $output, $question);
 
-        if (CreateAppCommand::$DEBUG) $apiUrl = 'http://192.168.0.28/FullApp/web/api';
+        if (AndroidAppCommand::$DEBUG) $apiUrl = 'http://192.168.0.28/FullApp/web/api';
         else $apiUrl = 'http://' . preg_replace('/[\s_-]+/', '', strtolower($appName)) . '.' . $domainName;
 
         $question = new Question('Please enter the <info>App API url</info> ['.$apiUrl.']: ', $apiUrl);

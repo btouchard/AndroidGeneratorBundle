@@ -395,7 +395,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 {% if withData %}
     @Override
     public String getDataFieldName() {
-        return "{{ dataPropertyName }}";
+        return "{{ filePropertyName }}";
     }
 
     @Override
