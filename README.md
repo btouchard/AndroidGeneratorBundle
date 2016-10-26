@@ -57,7 +57,8 @@ php bin/console android:create:app YourBundle
 Documentation
 -------------
 
-[Read the documentation](http://androidgeneratorbundle.kolapsis.com)
+Coming soon
+<!--[Read the documentation](http://androidgeneratorbundle.kolapsis.com)-->
 
 License
 -------
