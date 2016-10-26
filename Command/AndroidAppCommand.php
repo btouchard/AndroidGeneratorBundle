@@ -1,6 +1,6 @@
 <?php
 /**
- * Class GenerateAndroidApp
+ * Class AndroidAppCommand
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Command;
@@ -69,6 +69,8 @@ final class AndroidAppCommand extends ContainerAwareCommand {
 
     /**
      * {@inheritdoc}
+     * @param InputInterface $input
+     * @param OutputInterface $output
      */
     protected function execute(InputInterface $input, OutputInterface $output) {
         $this->output = $output;

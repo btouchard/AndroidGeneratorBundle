@@ -1,9 +1,6 @@
 <?php
 /**
- * Created by IntelliJ IDEA.
- * User: benjamin
- * Date: 27/10/16
- * Time: 00:24
+ * Class AndroidAppCommand
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Exception;
@@ -11,6 +8,13 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Exception;
 
 use Symfony\Component\Console\Exception\RuntimeException;
 
+
+/**
+ * Exception for Generator
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Exception
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
+ */
 class GeneratorException extends RuntimeException {
 
 }

@@ -1,11 +1,6 @@
 <?php
 /**
  * Abstract Class Generator
- *
- * Base generator
- *
- * @package Kolapsis\Bundle\AndroidGeneratorBundle\Parser
- * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
@@ -13,6 +8,12 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * Abstract Class Generator
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Parser
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
+ */
 abstract class Generator {
 
     /**
