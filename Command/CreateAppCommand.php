@@ -1,12 +1,11 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 18/10/16
+ * Class CreateAppCommand
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Command;
 
-use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
+
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\EntityGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\FileGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\GradleGenerator;
@@ -25,18 +24,39 @@ use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Process\Process;
 
 /**
- * AndroidAppCommand
- * Core command to create an Android project based on Symfony Bundle
+ * Core command to create an Android project based on your Bundle
+ *
+ * This class define a new command "android:app:create" in your application
+ * for generating Android application with account and authentication, content providers and sync system
+ * all based on your entity defined in your bundle
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Command
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
 final class CreateAppCommand extends ContainerAwareCommand {
 
+    /**
+     * Enable/Disable debug
+     * @var bool
+     */
     static $DEBUG = true;
 
+    /**
+     * Twig environment
+     * @var \Twig_Environment
+     */
     private $twig;
+
+    /**
+     * Command Line Output
+     * @var OutputInterface
+     */
     private $output;
 
-    protected function configure()
-    {
+    /**
+     * Configure command
+     */
+    protected function configure() {
         $this
             ->setName('android:app:create')
             ->setDescription('Creates Android app.')
@@ -48,6 +68,12 @@ final class CreateAppCommand extends ContainerAwareCommand {
         ;
     }
 
+    /**
+     * Execute command
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return void
+     */
     protected function execute(InputInterface $input, OutputInterface $output) {
         $this->output = $output;
         $bundleName = $input->getArgument('bundle');
@@ -135,6 +161,11 @@ final class CreateAppCommand extends ContainerAwareCommand {
         $this->output->writeln('<comment>Finished !</comment>');
     }
 
+    /**
+     * Return personalized Twig environment
+     * @param array $skeletonDirs
+     * @return \Twig_Environment
+     */
     private function getTwigEnvironment($skeletonDirs) {
         $env = new \Twig_Environment(new \Twig_Loader_Filesystem($skeletonDirs), array(
             'debug' => true,
@@ -146,6 +177,12 @@ final class CreateAppCommand extends ContainerAwareCommand {
         return $env;
     }
 
+    /**
+     * Read skeleton dir for Twig
+     * @param KernelInterface $kernel
+     * @param BundleInterface|null $bundle
+     * @return array
+     */
     private function getSkeletonDirs(KernelInterface $kernel, BundleInterface $bundle = null) {
         $skeletonDirs = array();
 
@@ -167,6 +204,11 @@ final class CreateAppCommand extends ContainerAwareCommand {
         return $skeletonDirs;
     }
 
+    /**
+     * Read skeleton sub dir
+     * @param string $dir
+     * @param array $skeletonDirs
+     */
     private function getSkeletonSubDirs($dir, &$skeletonDirs) {
         $finder = new Finder();
         $finder->directories()->in($dir);

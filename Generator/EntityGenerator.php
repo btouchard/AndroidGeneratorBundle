@@ -1,13 +1,14 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 19/10/16
+ * Class EntityGenerator
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
+
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\Table;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
@@ -15,23 +16,54 @@ use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * EntityGenerator
  * Core class to generate Entities parts (Entity, SyncService and Sync Adaptor)
- * Based on skeleton files on resources.
+ * Based on skeleton files on resources and definitions from parser.
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Generator
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
 final class EntityGenerator extends Generator {
 
+    /**
+     * Counter for android ContentProvider ID
+     * @var int
+     */
     private static $DIRECTORY_ID = 100;
 
+    /**
+     * Java destination path
+     * @var string
+     */
     private $javaPath;
+
+    /**
+     * BundleParser reference
+     * @var BundleParser
+     */
     private $parser;
+
+    /**
+     * BundleParser providers definition reference
+     * @var array
+     */
     private $providers;
 
+    /**
+     * EntityGenerator constructor.
+     * @param \Twig_Environment $twig
+     * @param OutputInterface $output
+     * @param $packageName
+     * @param $path
+     */
     public function __construct(\Twig_Environment $twig, OutputInterface $output, $packageName, $path) {
         parent::__construct($twig, $output, $packageName, $path);
         $this->javaPath = $path . '/app/src/main/java/' . str_replace('.', '/', $this->packageName);
     }
 
+    /**
+     * Generate Android Provider, Sync and Entities for all provider definition
+     * @param BundleParser $parser
+     */
     public function generate(BundleParser $parser) {
         $this->parser = $parser;
         $this->providers = $parser->providers();
@@ -45,7 +77,12 @@ final class EntityGenerator extends Generator {
         }
     }
 
-    private function generateProvider($provider, $entities) {
+    /**
+     * Generate Android ContentProvider's
+     * @param string $provider
+     * @param ClassMetadataCollection $entities
+     */
+    private function generateProvider($provider, ClassMetadataCollection $entities) {
         $this->output->write('Generate: ' . $provider . 'Provider');
         $target = $this->javaPath . '/providers/' . $provider . 'Provider.java';
         // echo '-> target:' . $target . PHP_EOL;
@@ -57,7 +94,13 @@ final class EntityGenerator extends Generator {
         $this->output->writeln(' -> <info>OK</info>');
     }
 
-    private function generateSync($provider, $entities, $anonymous) {
+    /**
+     * Generate Android SyncService and SyncAdapter
+     * @param string $provider
+     * @param ClassMetadataCollection $entities
+     * @param bool $anonymous
+     */
+    private function generateSync($provider, ClassMetadataCollection $entities, $anonymous) {
         $this->output->write('Generate: ' . $provider . 'SyncService');
         $target = $this->javaPath . '/sync/' . $provider . 'SyncService.java';
         // echo '-> target:' . $target . PHP_EOL;
@@ -78,7 +121,13 @@ final class EntityGenerator extends Generator {
         $this->output->writeln(' -> <info>OK</info>');
     }
 
-    private function generateEntity($provider, $entity, $anonymous) {
+    /**
+     * Generate Android Entity
+     * @param string $provider
+     * @param ClassMetadata $entity
+     * @param bool $anonymous
+     */
+    private function generateEntity($provider, ClassMetadata $entity, $anonymous) {
         $entityName = $this->parser->getEntityName($entity->getName());
         $mappings = $this->getAssociationMappings($entity);
         $this->output->write('Generate: Entity ' . $entityName);
@@ -115,6 +164,11 @@ final class EntityGenerator extends Generator {
         $this->output->writeln(' -> <info>OK</info>');
     }
 
+    /**
+     * Convert PHP/ORM type to Java type
+     * @param string $type
+     * @return string
+     */
     private function typeToJava($type) {
         switch ($type) {
             case 'boolean'; return 'bool';
@@ -125,7 +179,12 @@ final class EntityGenerator extends Generator {
         }
     }
 
-    private function getAssociationMappings($entity) {
+    /**
+     * Return association mapping for Entity
+     * @param ClassMetadata $entity
+     * @return array
+     */
+    private function getAssociationMappings(ClassMetadata $entity) {
         $result = [];
         $mappings = $entity->getAssociationMappings();
         foreach ($mappings as $assoc) {
@@ -139,8 +198,13 @@ final class EntityGenerator extends Generator {
         return $result;
     }
 
-    private function getDataPropertyName($meta) {
-        $reflectionClass = new \ReflectionClass($meta->getName());
+    /**
+     * Return Android Entity data property/field name (for download/upload)
+     * @param ClassMetadata $entity
+     * @return null|string
+     */
+    private function getDataPropertyName(ClassMetadata $entity) {
+        $reflectionClass = new \ReflectionClass($entity->getName());
         $reader = new AnnotationReader();
         foreach ($reflectionClass->getProperties() as $property) {
             $annotations = $reader->getPropertyAnnotations($property);
@@ -152,6 +216,11 @@ final class EntityGenerator extends Generator {
         return null;
     }
 
+    /**
+     * Find and return entity in provider definition
+     * @param string $name
+     * @return null|ClassMetadata
+     */
     private function getEntityByName($name) {
         foreach ($this->providers as $provider => $metaData)
             foreach ($metaData['entities'] as $entity)
@@ -160,6 +229,12 @@ final class EntityGenerator extends Generator {
         return null;
     }
 
+    /**
+     * Return type of specific field in Entity
+     * @param string $entityName
+     * @param string $field
+     * @return string
+     */
     private function getFieldEntityType($entityName, $field) {
         $entity = $this->getEntityByName($entityName);
         $type = $entity->getFieldMapping($field);

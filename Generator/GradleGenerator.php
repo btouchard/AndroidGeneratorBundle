@@ -1,16 +1,15 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 26/10/16
+ * Class GradleGenerator
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
-use Symfony\Component\Console\Output\OutputInterface;
-
 /**
- * GradleGenerator
- * Core class to clone files from skeleton files on resources.
+ * Core class to configure Android application.
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Generator
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
 final class GradleGenerator extends Generator {
 

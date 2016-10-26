@@ -1,14 +1,15 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 19/10/16
+ * Class File Annotation
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Annotation;
 
 /**
- * File
- * Annotation for Android Entity file property (download/upload)
+ * Annotation for Android Entity file upload definition
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Annotation
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  *
  * @Annotation
  * @Target("PROPERTY")

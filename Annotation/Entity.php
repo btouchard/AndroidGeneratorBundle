@@ -1,14 +1,15 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 19/10/16
+ * Class Entity Annotation
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Annotation;
 
 /**
- * Entity
  * Annotation for Android Entity definition
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Annotation
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  *
  * @Annotation
  * @Target("CLASS")
@@ -50,6 +51,10 @@ final class Entity {
      */
     public $ignoredClass = false;
 
+    /**
+     * Annotation constructor.
+     * @param $options
+     */
     public function __construct($options) {
         if (isset($options['value'])) {
             $options['entityName'] = $options['value'];

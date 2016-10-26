@@ -1,17 +1,18 @@
 <?php
 /**
- * Created by Benjamin Touchard @ 2016
- * Date: 19/10/16
+ * Class FileGenerator
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
+
 use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
-use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * FileGenerator
  * Core class to clone files from skeleton files on resources.
+ *
+ * @package Kolapsis\Bundle\AndroidGeneratorBundle\Generator
+ * @author Benjamin Touchard <benjamin@kolapsis.com>
  */
 final class FileGenerator extends Generator {
 
@@ -102,6 +103,11 @@ final class FileGenerator extends Generator {
         file_put_contents($path, $content);
     }
 
+    /**
+     * Convert string to camelCase
+     * @param $subject
+     * @return string
+     */
     private function slug($subject) {
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', $subject));
     }
