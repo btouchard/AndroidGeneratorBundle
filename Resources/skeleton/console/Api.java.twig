@@ -2,6 +2,7 @@ package {{ package }}.console;
 
 import android.accounts.Account;
 import android.accounts.AuthenticatorException;
+import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -40,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@SuppressLint("CommitPrefEdits")
 public class Api {
 
     public static final String TAG = Constants.APP_NAME + ".Api";
@@ -65,29 +67,26 @@ public class Api {
         return sInstance;
     }
 
-    private final Bundle mUser;
     @SuppressWarnings("deprecation")
-    private HttpContext mHttpContext;
-    private String mApiUrl = Constants.API_BASE_URL;
+    private HttpContext httpContext;
+    private String apiUrl = Constants.API_BASE_URL;
 
     private Api() {
-        mUser = new Bundle();
         initialize();
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(sContext);
-        if (pref != null) setApiUrl(pref.getString("api_url", Constants.API_BASE_URL));
+        if (pref != null)
+            setApiUrl(pref.getString("api_url", Constants.API_BASE_URL));
     }
 
     private void initialize() {
-        mUser.clear();
-        mHttpContext = getHttpContext();
+        httpContext = getHttpContext();
     }
 
     public void setApiUrl(String url) {
-        mApiUrl = url;
+        apiUrl = url;
     }
-
     public String getApiUrl() {
-        return mApiUrl;
+        return apiUrl;
     }
 
     private HttpContext getHttpContext() {
@@ -110,46 +109,29 @@ public class Api {
         if (account != null) {
             String token = AccountHelper.getData(UserColumns.TOKEN);
             if (!StringUtils.isEmpty(token)) request.bearer(token);
-            //Log.d(TAG+".Config", "--> getHttpData('" + Constants.API_TOKEN_NAME + "', '" + token + "')");
         }
         return request;
     }
 
     /**
-     * TODO : AUTHENTIFICATION
-     */
-
-    /**
      * Validation d'un token d'authentification
      *
-     * @param account
      * @param token
-     * @return success
+     * @return boolean
      * @throws AuthenticatorException Auth error
      * @throws IOException Internet error
      */
 
-    public boolean isValidToken(Account account, String token) throws AuthenticatorException, IOException {
+    public boolean isValidToken(String token) throws AuthenticatorException, IOException {
         if (token == null) return false;
-        while (AUTH_IN_PROGRESS) {
-            try {
-                //if (Constants.DEBUG) Log.i(TAG, "--> starting wait");
-                Thread.sleep(BACKOFF_MILLI_SECONDS);
-                //if (Constants.DEBUG) Log.i(TAG, "--> continue");
-                if (mUser.containsKey(UserColumns.TOKEN)) return token.equals(mUser.getString(UserColumns.TOKEN));
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                AUTH_IN_PROGRESS = false;
-            }
-        }
         boolean success = false;
         HttpData request = null;
         try {
-            String url = mApiUrl + "/me";
-            //if (Constants.DEBUG) Log.d(TAG+".Auth", "--> isValideToken('" + url + "', '" + token + "')");
-            request = getHttpData(null, url).bearer(token).get(mHttpContext);
+            String url = apiUrl + "/me";
+            if (Constants.DEBUG) Log.d(TAG+".Auth", "isValidToken('" + url + "', '" + token + "')");
+            request = getHttpData(null, url).bearer(token).get(httpContext);
             success = request.isHttpOK();
-            //if (Constants.DEBUG) Log.d(TAG+".Auth", "--> token: '" + token + "', valide: '" + success + "'");
+            if (Constants.DEBUG) Log.d(TAG+".Auth", "-> valid: " + success);
         } catch (HttpData.HttpDataException e) {
             Log.e(TAG + ".Auth", "HttpDataException: " + e.getMessage());
             throw new IOException(e.getMessage());
@@ -184,38 +166,34 @@ public class Api {
      */
     public String authenticate(String username, String password) throws AuthenticatorException, IOException {
         if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) return null;
-        String url = mApiUrl + "/login_check";
+        String url = apiUrl + "/login";
         Log.d(TAG+".Auth", "--> authentificate('" + url + "', '" + username + "', '" + password + "')");
-        //Log.v(TAG+".Auth", "---> auth in progress: " + AUTH_IN_PROGRESS);
         while (AUTH_IN_PROGRESS) {
             try {
-                //if (Constants.DEBUG) Log.i(TAG, "--> starting wait");
                 Thread.sleep(BACKOFF_MILLI_SECONDS);
-                if (mUser.containsKey(UserColumns.TOKEN)) return mUser.getString(UserColumns.TOKEN);
-                //else if (Constants.DEBUG) Log.i(TAG, "--> continue");
+                Account account = new Account(username, Constants.ACCOUNT_TYPE);
+                String userToken = AccountHelper.getData(account, UserColumns.TOKEN);
+                if (userToken != null) return userToken;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 AUTH_IN_PROGRESS = false;
             }
         }
-        mUser.remove(UserColumns.TOKEN);
         String token = null;
         HttpData request = null;
         try {
-            Log.v(TAG + ".Auth", "-> request: " + url);
-            Log.v(TAG + ".Auth", "--> username: " + username);
-            Log.v(TAG + ".Auth", "--> password: " + password);
+            if (Constants.DEBUG) Log.v(TAG + ".Auth", "authenticate: " + url + " [username: " + username + ", password: " + password + "]");
             JSONObject obj = new JSONObject();
-            obj.put("_"+UserColumns.USERNAME, username);
-            obj.put("_"+UserColumns.PASSWORD, password);
-            request = getHttpData(null, url).data(obj).post(mHttpContext);
-            Log.v(TAG + ".Auth", "-> res:" + request.asString());
+            obj.put(UserColumns.USERNAME, username);
+            obj.put(UserColumns.PASSWORD, password);
+            request = getHttpData(null, url).data(obj).post(httpContext);
+            if (Constants.DEBUG) Log.v(TAG + ".Auth", "-> res:" + request.asString());
             if (request.isHttpOK()) {
                 JSONObject json = request.asJSONObject();
-                Log.v(TAG + ".Auth", "-> json:" + json.toString());
+                // if (Constants.DEBUG) Log.v(TAG + ".Auth", "-> json:" + json.toString());
                 if (json.has(UserColumns.TOKEN)) {
                     token = json.getString(UserColumns.TOKEN);
-                    Log.d(TAG + ".Auth", "--> token: '" + token + "'");
+                    if (Constants.DEBUG) Log.d(TAG + ".Auth", "--> token: '" + token + "'");
                 }
             }
         } catch (HttpData.HttpDataException e) {
@@ -244,17 +222,17 @@ public class Api {
         data.putString(UserColumns.TOKEN, token);
         HttpData request = null;
         try {
-            String url = mApiUrl + "/me";
-            Log.d(TAG+".Auth", "---> loadUser('" + url + "', '" + token + "')");
-            request = getHttpData(null, url).bearer(token).get(mHttpContext);
-            Log.d(TAG, request.asString());
+            String url = apiUrl + "/me";
+            if (Constants.DEBUG) Log.d(TAG+".Auth", "loadUser('" + url + "', '" + token + "')");
+            request = getHttpData(null, url).bearer(token).get(httpContext);
+            if (Constants.DEBUG) Log.v(TAG + ".Auth", "-> res:" + request.asString());
             if (request.isHttpOK()) {
                 JSONObject result = request.asJSONObject();
                 data.putString(UserColumns.USERNAME, result.getString(UserColumns.USERNAME));
                 data.putString(UserColumns.PASSWORD, password);
                 data.putString(UserColumns.SALT, result.getString(UserColumns.SALT));
 {% for column in columns %}
-                data.putString(UserColumns.{{ column|upper }}, result.getString(UserColumns.{{ column|upper }}));
+                data.putString(UserColumns.{{ column|sqlName|upper }}, result.getString(UserColumns.{{ column|sqlName|upper }}));
 {% endfor %}
             }
         } catch (HttpData.HttpDataException e) {
@@ -272,12 +250,12 @@ public class Api {
     public boolean saveUser(Account account, JSONObject data) throws AuthenticatorException, IOException {
         HttpData request = null;
         try {
-            String url = mApiUrl + "/me";
+            String url = apiUrl + "/me";
             //Log.d(TAG+".Auth", "---> saveUser('" + url + "', '" + token + "')");
             //JSONObject data = new JSONObject();
             //data.put(UserColumns.ID, AccountHelper.getData(account, UserColumns.ID));
             //data.put(UserColumns.USERNAME, AccountHelper.getData(account, UserColumns.USERNAME));
-            request = getHttpData(account, url).data(data).put(mHttpContext);
+            request = getHttpData(account, url).data(data).put(httpContext);
             //Log.d(TAG, request.asString());
             return request.isHttpOK();
         } catch (HttpData.HttpDataException e) {
@@ -324,12 +302,12 @@ public class Api {
         HttpData request = null;
         try {
             T inst = clzz.newInstance();
-            String url = mApiUrl + "/" + inst.getApiPath();
-            Log.d(TAG + ".Load", "--> load('" + url + "')");
+            String url = apiUrl + "/" + inst.getApiPath();
+            if (Constants.DEBUG) Log.d(TAG + ".Load", "load(" + url + ")");
             request = getHttpData(account, url);
             request.data("updated", String.valueOf((int) (lastSync / 1000)));
-            request.get(mHttpContext);
-            // Log.d(TAG+".Load", "--> result: " + request.asString());
+            request.get(httpContext);
+            // if (Constants.DEBUG) Log.d(TAG+".Load", "-> res: " + request.asString());
             if (!request.isHttpOK()) throw new AuthenticatorException(request.asJSONObject().getString("message"));
             else {
                 JSONArray ints = request.asJSONArray();
@@ -369,15 +347,14 @@ public class Api {
         int sourceId = 0;
         HttpData request = null;
         try {
-            //T inst = clzz.newInstance();
-            String url = mApiUrl + "/" + entity.getApiPath();
+            String url = apiUrl + "/" + entity.getApiPath();
             if (entity.getSourceId() > 0) url += "/" + entity.getSourceId();
-            Log.d(TAG + ".Save", "---> " + (entity.getSourceId() == 0 ? "insert" : "update") + "('" + url + "')");
-            Log.d(TAG+".Save", "---> data: " + entity.asJSON(account));
+            if (Constants.DEBUG) Log.d(TAG + ".Save", (entity.getSourceId() == 0 ? "Insert" : "Update") + "('" + url + "')");
+            // if (Constants.DEBUG) Log.d(TAG+".Save", "-> data: " + entity.asJSON(account));
             request = getHttpData(account, url).data(entity.asJSON(account));
-            if (entity.getSourceId() > 0) request.put(mHttpContext);
-            else request.post(mHttpContext);
-            Log.d(TAG + ".Save", "---> result: " + request.asString());
+            if (entity.getSourceId() > 0) request.put(httpContext);
+            else request.post(httpContext);
+            Log.d(TAG + ".Save", "-> result: " + request.asString());
             if (!request.isHttpOK()) throw new AuthenticatorException(request.asJSONObject().getString("message"));
             else {
                 JSONObject result = request.asJSONObject();
@@ -408,10 +385,10 @@ public class Api {
         boolean success = false;
         HttpData request = null;
         try {
-            String url = mApiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId();
-            Log.d(TAG + ".Delete", "---> delete('" + url + "')");
-            request = getHttpData(account, url).delete(mHttpContext);
-            //Log.d(TAG+".Delete", "---> result: " + request.asString());
+            String url = apiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId();
+            if (Constants.DEBUG) Log.d(TAG + ".Delete", "Delete('" + url + "')");
+            request = getHttpData(account, url).delete(httpContext);
+            // if (Constants.DEBUG) Log.d(TAG+".Delete", "-> result: " + request.asString());
             success = request.isHttpOK();
             if (!success) throw new AuthenticatorException(request.asJSONObject().getString("message"));
         } catch (HttpData.HttpDataException e) {
@@ -427,15 +404,12 @@ public class Api {
     }
 
     public <T extends Entity> long fileSize(Account account, T entity) throws AuthenticatorException, IOException {
-        long size = 0;
-        return fileSize(account, ((Entity.WithData) entity).getData());
-    }
-
-    public long fileSize(Account account, String source) throws AuthenticatorException, IOException {
+        String source = ((Entity.WithData) entity).getData();
+        String fieldName = ((Entity.WithData) entity).getDataFieldName();
         if (StringUtils.isEmpty(source)) return 0;
-        long size = 0;
-        String url = mApiUrl + source;
+        String url = apiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId() + "/" + fieldName;
         //Log.d(TAG+".FileSize", "---> fileSize('" + url + "')");
+        long size = 0;
         HttpData request = null;
         try {
             request = getHttpData(account, url).head();
@@ -453,18 +427,19 @@ public class Api {
         return size;
     }
 
-    public Uri download(Account account, String source) throws AuthenticatorException, IOException {
+    public <T extends Entity> Uri download(Account account, T entity) throws AuthenticatorException, IOException {
+        String source = ((Entity.WithData) entity).getData();
+        String fieldName = ((Entity.WithData) entity).getDataFieldName();
         if (StringUtils.isEmpty(source)) return null;
         Uri uri = null;
-        String name = StringUtils.getFilename(source);
-        String url = mApiUrl + source;
+        String url = apiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId() + "/" + fieldName;
         Log.d(TAG+".Download", "---> download('" + url + "')");
         HttpData request = null;
         try {
             request = getHttpData(account, url).get();
             InputStream is = request.asInputStream();
             try {
-                File tmp = new File(sContext.getCacheDir(), name);
+                File tmp = new File(sContext.getCacheDir(), fieldName);
                 FileOutputStream os = new FileOutputStream(tmp);
                 try {
                     final byte[] buffer = new byte[1024];
@@ -492,19 +467,18 @@ public class Api {
     }
 
     public <T extends Entity> String upload(Account account, T entity) throws AuthenticatorException, IOException {
-        String path = null;
         File file = new File(((Entity.WithData) entity).getData());
-        String url = mApiUrl + "/medias/" + entity.getApiPath() + "/" + entity.getSourceId(); // + "/" + file.getName();
+        String fieldName = ((Entity.WithData) entity).getDataFieldName();
+        String url = apiUrl + "/" + entity.getApiPath() + "/" + entity.getSourceId() + "/" + fieldName;
         Log.d(TAG+".Upload", "---> upload('" + url + "')");
         HttpData request = null;
         try {
-            request = getHttpData(account, url)/*.data("id", String.valueOf(entity.getSourceId()))*/
-                    .file(file).post();
-            Log.v(TAG, request.asString());
+            request = getHttpData(account, url).file(fieldName, file).post();
+            Log.v(TAG+".Upload", request.asString());
             boolean success = request.isHttpOK();
             JSONObject json = request.asJSONObject();
             if (!success) throw new AuthenticatorException(json.getString("message"));
-            path = json.getString("path");
+            return json.getString(fieldName);
         } catch (HttpData.HttpDataException e) {
             Log.e(TAG+".Upload", "HttpDataException: " + e.getMessage());
             throw new IOException(e.getMessage());
@@ -514,15 +488,5 @@ public class Api {
         } finally {
             CloseUtils.closeQuietly(request);
         }
-        return path;
     }
-
-    private static long getLocalFileSize(ContentResolver cr, Uri uri) {
-        try {
-            InputStream is = cr.openInputStream(uri);
-            if (is != null) return is.available();
-        } catch (IOException ignored) {}
-        return 0;
-    }
-
 }

@@ -30,6 +30,8 @@ public class AccountHelper {
 		void onSyncStateChange(boolean syncInProgress);
 	}
 
+	private static final String DEFAULT_ACCOUNT_NAME = "Default";
+
 	private static Context sContext;
 	private static AccountManager sManager;
 	private static Account sAccount;
@@ -71,7 +73,10 @@ public class AccountHelper {
 	public static void requestSync(Account account, String[] authorities) {
 		Bundle extras = new Bundle();
 		extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-		if (authorities == null) authorities = new String[] { {{ authorities }} };
+		if (authorities == null) {
+			if (DEFAULT_ACCOUNT_NAME.equals(account.name)) authorities = new String[] { {{ authorities.anonymous|join(', ') }} };
+			else authorities = new String[] { {{ authorities.auth|join(', ') }} };
+		}
 		for (String authority : authorities) ContentResolver.requestSync(account, authority, extras);
 	}
 
@@ -80,7 +85,7 @@ public class AccountHelper {
 		try {
 			if (manual) sManager.setAuthToken(account, Constants.AUTH_TOKEN_TYPE, null);
 			authToken = sManager.blockingGetAuthToken(account, Constants.AUTH_TOKEN_TYPE, false);
-			boolean valid = Api.getInstance().isValidToken(account, authToken);
+			boolean valid = Api.getInstance().isValidToken(authToken);
 			if (!valid) {
 				if (authToken != null) sManager.invalidateAuthToken(Constants.AUTH_TOKEN_TYPE, authToken);
 				sManager.setAuthToken(account, Constants.AUTH_TOKEN_TYPE, null);
@@ -106,50 +111,26 @@ public class AccountHelper {
 		return null;
 	}
 
-	public static boolean isEmpty() {
-		return !hasAccount();
-	}
-
-	public static boolean isAccount(Account account) {
-		if (Constants.ACCOUNT_TYPE.equals(account.type)) {
-			if (!hasAccount()) return false;
-			return getAccount().name.equals(account.name);
-		}
-		return false;
+	public static boolean hasAccount() {
+		if (sManager == null) return false;
+		return sManager.getAccountsByType(Constants.ACCOUNT_TYPE).length > 0;
 	}
 
 	@SuppressLint("CommitPrefEdits")
 	public static void setAccount(Account account) {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(sContext);
-		boolean change = false;
 		if (Constants.ACCOUNT_TYPE.equals(account.type) && !account.equals(sAccount)) {
 			sAccount = account;
 			prefs.edit().putString("selected_account", sAccount.name).commit();
-			change = true;
 		}
-		Log.v(TAG, "setCurrentAccount: " + change + " > " + account);
-		//if (change) dispatchEvent(new Event(ACCOUNT_CHANGE, account));
+		// Log.v(TAG, "setCurrentAccount: " + account);
 	}
 
-	public static String getData(Account account, String name) {
-		if (account == null) return null;
-		String value = sManager.getUserData(account, name);
-		//Log.v(TAG, "getBoxData: " + name + " = " + value);
-		return value;
-	}
-	public static void setData(Account account, String name, String data) {
-		if (account == null || name == null) return;
-		sManager.setUserData(account, name, data);
+	public static void addAccountExplicitly(Account account, String password, Bundle userData) {
+		sManager.addAccountExplicitly(account, password, userData);
+		setAccount(account);
 	}
 
-	public static String getData(String name) {
-		return getData(getAccount(), name);
-	}
-
-	public static boolean hasAccount() {
-		if (sManager == null) return false;
-		return sManager.getAccountsByType(Constants.ACCOUNT_TYPE).length > 0;
-	}
 	public static Account getAccount() {
 		if (sAccount == null && hasAccount()) {
 			Account[] accounts = sManager.getAccountsByType(Constants.ACCOUNT_TYPE);
@@ -167,6 +148,51 @@ public class AccountHelper {
 			return sManager.getPassword(account);
 		}
 		return null;
+	}
+	public static void setPassword(Account account, String password) {
+		sManager.setPassword(account, password);
+	}
+
+	public static String getData(Account account, String name) {
+		if (account == null) return null;
+		String value = sManager.getUserData(account, name);
+		//Log.v(TAG, "getBoxData: " + name + " = " + value);
+		return value;
+	}
+	public static void setData(Account account, String name, String data) {
+		if (account == null || name == null) return;
+		sManager.setUserData(account, name, data);
+	}
+
+	public static String getData(String name) {
+		return getData(getAccount(), name);
+	}
+
+	public static boolean hasDefaultAccount() {
+		return null != getAccountByTypeAndName(Constants.ACCOUNT_TYPE, DEFAULT_ACCOUNT_NAME);
+	}
+
+	public static void addDefaultAccount() {
+		if (!hasDefaultAccount()) {
+			Log.i(TAG, "addDefaultAccount");
+			Account account = new Account(DEFAULT_ACCOUNT_NAME, Constants.ACCOUNT_TYPE);
+			sManager.addAccountExplicitly(account, null, null);
+			long delay = 24 * 3600;
+			Bundle extras = new Bundle();
+			extras.putLong("periodic_sync", delay);
+{% for provider in providers %}
+			ContentResolver.setSyncAutomatically(account, {{ provider }}Provider.AUTHORITY, true);
+			ContentResolver.addPeriodicSync(account, {{ provider }}Provider.AUTHORITY, extras, delay);
+{% endfor %}
+		}
+	}
+
+	public static void removeDefaultAccount() {
+		if (hasDefaultAccount()) {
+			Log.i(TAG, "removeDefaultAccount");
+			Account account = getAccountByTypeAndName(Constants.ACCOUNT_TYPE, DEFAULT_ACCOUNT_NAME);
+			sManager.removeAccount(account, null, null);
+		}
 	}
 
 }

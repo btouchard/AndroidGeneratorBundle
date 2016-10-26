@@ -12,7 +12,7 @@ public interface UserColumns {
     String PASSWORD				= "password";
     String SALT 				= "salt";
 {% for column in columns %}
-    String {{ column|upper }}   			= "{{ column }}";
+    String {{ column|sqlName|upper }}   			= "{{ column|sqlName }}";
 {% endfor %}
 
 }

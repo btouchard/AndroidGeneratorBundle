@@ -41,9 +41,9 @@
         <!-- {{ provider }} -->
         <provider
                 android:name=".providers.{{ provider }}Provider"
-                android:authorities="@string/provider_{{ provider|lower }}_authority"
+                android:authorities="@string/provider_{{ provider|slug }}_authority"
                 android:exported="true"
-                android:label="@string/provider_{{ provider|lower }}_label"
+                android:label="@string/provider_{{ provider|slug }}_label"
                 android:syncable="true"/>
 
         <service
@@ -55,7 +55,7 @@
 
             <meta-data
                     android:name="android.content.SyncAdapter"
-                    android:resource="@xml/syncadapter_{{ provider|lower }}"/>
+                    android:resource="@xml/syncadapter_{{ provider|slug }}"/>
         </service>
 {% endfor %}
     </application>

@@ -1,0 +1,62 @@
+package {{ package }};
+
+import android.database.Cursor;
+import android.os.Bundle;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import {{ package }}.entity.*;
+import {{ package }}.helpers.AccountHelper;
+
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>
+{
+    public static final String TAG = Constants.APP_NAME + ".Main";
+    
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.main);
+
+        AccountHelper.setContext(this);
+        if (!AccountHelper.hasAccount())
+            AccountHelper.addDefaultAccount();
+
+{% for entity in entities %}
+        getSupportLoaderManager().initLoader({{ loop.index }}, null, this);
+{% endfor %}
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        switch (id) {
+{% for entity in entities %}
+            case {{ loop.index }}:
+                return new {{ entity }}.{{ entity }}Loader(this, AccountHelper.getAccount(), null);
+{% endfor %}
+        }
+        return null;
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        switch (loader.getId()) {
+{% for entity in entities %}
+            case {{ loop.index }}:
+                Log.v(TAG, data.getCount() + " {{ entity }}");
+                if (data.moveToFirst()) {
+                    do {
+                        {{ entity }} entity = {{ entity }}.cursorTo{{ entity }}(data);
+                        Log.v(TAG, "-> " + entity.toString());
+                    } while (data.moveToNext());
+                }
+                break;
+{% endfor %}
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+
+    }
+}

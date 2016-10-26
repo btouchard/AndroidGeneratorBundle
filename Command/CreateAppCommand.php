@@ -1,9 +1,7 @@
 <?php
 /**
- * Created by IntelliJ IDEA.
- * User: benjamin
+ * Created by Benjamin Touchard @ 2016
  * Date: 18/10/16
- * Time: 14:23
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Command;
@@ -11,6 +9,8 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Command;
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\EntityGenerator;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\FileGenerator;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Generator\GradleGenerator;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Twig\TwigFormatterExtension;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
@@ -24,8 +24,13 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Process\Process;
 
-class AndroidAppCommand extends ContainerAwareCommand
-{
+/**
+ * AndroidAppCommand
+ * Core command to create an Android project based on Symfony Bundle
+ */
+final class CreateAppCommand extends ContainerAwareCommand {
+
+    static $DEBUG = true;
 
     private $twig;
     private $output;
@@ -42,8 +47,8 @@ class AndroidAppCommand extends ContainerAwareCommand
             ->addOption('gradle', 'g', InputOption::VALUE_REQUIRED, 'Gradle version', '2.2.0')
         ;
     }
-    protected function execute(InputInterface $input, OutputInterface $output)
-    {
+
+    protected function execute(InputInterface $input, OutputInterface $output) {
         $this->output = $output;
         $bundleName = $input->getArgument('bundle');
 
@@ -76,16 +81,17 @@ class AndroidAppCommand extends ContainerAwareCommand
         $question = new Question('Please enter the <info>App Name</info> ['.$appName.']: ', $appName);
         $appName = $helper->ask($input, $output, $question);
 
-        // $path = dirname($kernel->getRootDir()) . '/android';
-        $path = '/home/benjamin/Documents/workspace/' . $appName;
+        if (CreateAppCommand::$DEBUG) $path = '/home/benjamin/Documents/workspace/' . $appName;
+        else $path = dirname($kernel->getRootDir()) . '/android';
+
         $question = new Question('Please enter the <info>App final path</info> ['.$path.']: ', $path);
         $path = $helper->ask($input, $output, $question);
 
         $question = new Question('Please enter the <info>App domain name</info> [kolapsis.com]: ', 'kolapsis.com');
         $domainName = $helper->ask($input, $output, $question);
 
-        //$apiUrl = 'http://' . preg_replace('/[\s_-]+/', '', strtolower($appName)) . '.' . $domainName;
-        $apiUrl = 'http://192.168.0.28/FullApp/web/api';
+        if (CreateAppCommand::$DEBUG) $apiUrl = 'http://192.168.0.28/FullApp/web/api';
+        else $apiUrl = 'http://' . preg_replace('/[\s_-]+/', '', strtolower($appName)) . '.' . $domainName;
 
         $question = new Question('Please enter the <info>App API url</info> ['.$apiUrl.']: ', $apiUrl);
         $apiUrl = $helper->ask($input, $output, $question);
@@ -94,24 +100,20 @@ class AndroidAppCommand extends ContainerAwareCommand
         $tmp = array_reverse($tmp);
         $packageName = implode('.', $tmp) . '.' . preg_replace('/[\s_-]+/', '', strtolower($appName));
 
-        $manifestPath = $path . '/app/src/main';
-        $javaPath = $manifestPath . '/java/' . str_replace('.', '/', $packageName);
-        $resPath = $manifestPath . '/res';
-
-        $manager = new DisconnectedMetadataFactory($this->getContainer()->get('doctrine'));
-        $metadata = $manager->getBundleMetadata($bundle);
-
         $output->writeln('==================================');
         $output->writeln('');
         $output->writeln('Generating App: "' . $appName . '" [package: ' . $packageName . ']');
         $output->writeln('==================================');
         $output->writeln('');
 
+        $parser = new BundleParser($this->output, $this->getContainer());
+        $parser->parse($bundle);
+
         if (!is_dir($path)) {
             $this->output->write('Generate Android application');
             $process = new Process("android create project --target android-$androidVersion --activity MainActivity --package $packageName --gradle --gradle-version $gradleVersion --path $path");
             $process->run();
-            $this->output->writeln(' -> OK');
+            $this->output->writeln(' -> <info>OK</info>');
 
             $fs = new Filesystem();
             $this->output->write('Prepare project structure');
@@ -121,61 +123,13 @@ class AndroidAppCommand extends ContainerAwareCommand
             $this->output->writeln(' -> <info>OK</info>');
         }
 
-        $fileGenerator = new FileGenerator($this->twig, $packageName);
+        $entityGenerator = new EntityGenerator($this->twig, $this->output, $packageName, $path);
+        $gradleGenerator = new GradleGenerator($this->twig, $this->output, $packageName, $path);
+        $fileGenerator = new FileGenerator($this->twig, $this->output, $packageName, $path);
 
-        $this->output->write('Setting up project configuration');
-        $fileGenerator->generate('root.build.gradle', $path . '/build.gradle', [ 'gradleVersion' => $gradleVersion ]);
-        $fileGenerator->generate('gradle.properties', $path . '/gradle.properties');
-        $fileGenerator->generate('local.properties', $path . '/local.properties', [ 'sdkPath' => $sdkPath ]);
-        $fileGenerator->generate('settings.gradle', $path . '/settings.gradle', [ 'moduleName' => 'app' ]);
-        $fileGenerator->generate('proguard-rules.pro', $path.'/app/proguard-rules.pro');
-        $fileGenerator->generate('build.gradle', $path.'/app/build.gradle', [ 'androidVersion' => $androidVersion, 'minSdkVersion' => $minSdkVersion ]);
-        $fileGenerator->setupConf($path.'/gradle/wrapper/gradle-wrapper.properties', '/gradle-([\.?\d])+-all/', 'gradle-2.14.1-all');
-        $this->output->writeln(' -> <info>OK</info>');
-
-        $this->output->write('Parsing: ' . $metadata->getNamespace());
-        $entityGenerator = new EntityGenerator($this->twig, $this->output, $packageName, $javaPath);
-        $entityGenerator->prepare($metadata);
-        $providerNames = $entityGenerator->extractProviderNames();
-        $entityNames = $entityGenerator->extractEntityNames();
-        $this->output->writeln(' -> <info>OK</info>');
-
-        $this->output->write('Preparing Android application base');
-
-        $fileGenerator->generate('AndroidManifest.xml', $manifestPath.'/AndroidManifest.xml', [
-            'permissions' => ['INTERNET', 'AUTHENTICATE_ACCOUNTS', 'GET_ACCOUNTS', 'USE_CREDENTIALS', 'MANAGE_ACCOUNTS', 'WRITE_SYNC_SETTINGS', 'WRITE_SETTINGS', 'WRITE_EXTERNAL_STORAGE'],
-            'providers' => $providerNames,
-        ]);
-
-        $fileGenerator->generate('authenticator.xml', $resPath.'/xml/authenticator.xml', ['appName' => $appName]);
-        foreach ($providerNames as $provider)
-            $fileGenerator->generate('syncadapter_provider.xml', $resPath.'/xml/syncadapter_'.strtolower($provider).'.xml', ['provider' => $provider]);
-
-        $fileGenerator->generate('colors.xml', $resPath.'/values/colors.xml', ['appName' => $appName]);
-        $fileGenerator->generate('dimens.xml', $resPath.'/values/dimens.xml', ['appName' => $appName]);
-        $fileGenerator->generate('strings_auth.xml', $resPath.'/values/strings_auth.xml', ['appName' => $appName, 'providers' => $providerNames]);
-        $fileGenerator->generate('styles.xml', $resPath.'/values/styles.xml', ['appName' => $appName]);
-
-        $fileGenerator->generate('Constants.java', $javaPath.'/Constants.java', ['appName' => $appName, 'apiUrl' => $apiUrl]);
-        $fileGenerator->generate('Entity.java', $javaPath.'/helpers/Entity.java');
-        $fileGenerator->generate('AccountHelper.java', $javaPath.'/helpers/AccountHelper.java', ['entities' => $entityNames, 'authorities' => $this->getAuthorities($providerNames)]);
-        $fileGenerator->generate('DatabaseHelper.java', $javaPath.'/helpers/DatabaseHelper.java', ['entities' => $entityNames]);
-        $fileGenerator->generate('BaseSyncAdapter.java', $javaPath.'/sync/BaseSyncAdapter.java');
-
-        $fileGenerator->generate('AccountActivity.java', $javaPath.'/authenticator/AccountActivity.java', ['providers' => $providerNames]);
-        foreach (['Authenticator', 'AuthService'] as $class)
-            $fileGenerator->generate($class.'.java', $javaPath.'/authenticator/'.$class.'.java');
-        $fileGenerator->generate('account_auth.xml', $resPath.'/layout/account_auth.xml');
-
-        $userColumns = $this->getUserColumns($manager);
-        $fileGenerator->generate('Api.java', $javaPath.'/console/Api.java', ['columns' => $userColumns]); //, ['providers' => $providerNames, 'entities' => $entityNames]
-        $fileGenerator->generate('UserColumns.java', $javaPath.'/console/UserColumns.java', ['columns' => $userColumns]);
-
-        foreach (['CloseUtils', 'BitmapUtils', 'FileUtils', 'HttpData', 'StringUtils'] as $class)
-            $fileGenerator->generate($class.'.java', $javaPath.'/utils/'.$class.'.java');
-        $this->output->writeln(' -> <info>OK</info>');
-
-        $entityGenerator->generate();
+        $gradleGenerator->generate($gradleVersion, $sdkPath, $androidVersion, $minSdkVersion);
+        $fileGenerator->generate($appName, $apiUrl, $parser);
+        $entityGenerator->generate($parser);
 
         $this->output->writeln('');
         $this->output->writeln('<comment>Finished !</comment>');
@@ -189,15 +143,7 @@ class AndroidAppCommand extends ContainerAwareCommand
             'autoescape' => false,
         ));
         $env->addExtension(new TwigFormatterExtension());
-
         return $env;
-    }
-
-    private function getAuthorities($names) {
-        $auths = [];
-        foreach ($names as $name)
-            $auths[] = $name . 'Provider.AUTHORITY';
-        return implode(', ', $auths);
     }
 
     private function getSkeletonDirs(KernelInterface $kernel, BundleInterface $bundle = null) {
@@ -227,16 +173,5 @@ class AndroidAppCommand extends ContainerAwareCommand
         foreach ($finder as $sub) {
             $skeletonDirs[] = $sub->getPathname();
         }
-    }
-
-    private function getUserColumns($manager) {
-        $columns = [];
-        $class = $this->getContainer()->get('fos_user.user_manager')->getClass();
-        if ($class != null) {
-            $meta = $manager->getClassMetadata($class);
-            $excludes = ['id'];
-            $columns = array_diff($meta->getMetaData()[0]->getColumnNames(), $excludes);
-        }
-        return $columns;
     }
 }

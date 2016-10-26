@@ -1,78 +1,48 @@
 <?php
 /**
- * Created by IntelliJ IDEA.
- * User: benjamin
+ * Created by Benjamin Touchard @ 2016
  * Date: 19/10/16
- * Time: 11:35
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Common\Annotations\AnnotationReader;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\AndroidAnnotation;
+use Doctrine\ORM\Mapping\Table;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class EntityGenerator extends Generator {
+/**
+ * EntityGenerator
+ * Core class to generate Entities parts (Entity, SyncService and Sync Adaptor)
+ * Based on skeleton files on resources.
+ */
+final class EntityGenerator extends Generator {
 
     private static $DIRECTORY_ID = 100;
 
-    private $output;
-    private $metadata, $javaPath;
-    private $packageName, $providers = [];
+    private $javaPath;
+    private $parser;
+    private $providers;
 
-    public function __construct(\Twig_Environment $twig, OutputInterface $output, $packageName, $javaPath) {
-        parent::__construct($twig);
-        $this->output = $output;
-        $this->packageName = $packageName;
-        $this->javaPath = $javaPath;
+    public function __construct(\Twig_Environment $twig, OutputInterface $output, $packageName, $path) {
+        parent::__construct($twig, $output, $packageName, $path);
+        $this->javaPath = $path . '/app/src/main/java/' . str_replace('.', '/', $this->packageName);
     }
 
-    public function getProviders() {
-        return $this->providers;
-    }
-
-    public function prepare(ClassMetadataCollection $metadata) {
-        $this->metadata = $metadata;
-        $this->providers = $this->prepareEntities();
-    }
-
-    public function generate() {
-        foreach ($this->providers as $provider => $entities) {
-            $entityNames = $this->getEntityNames($entities);
-            $this->generateProvider($provider, $entityNames);
-            $this->generateSync($provider, $entityNames);
-            foreach ($entities as $entity) {
-                $this->generateEntity($provider, $entity);
+    public function generate(BundleParser $parser) {
+        $this->parser = $parser;
+        $this->providers = $parser->providers();
+        foreach ($this->providers as $provider => $metaData) {
+            if (!empty($provider)) {
+                $this->generateProvider($provider, $metaData['entities']);
+                $this->generateSync($provider, $metaData['entities'], $metaData['anonymous']);
             }
+            foreach ($metaData['entities'] as $entity)
+                $this->generateEntity($provider, $entity, $metaData['anonymous']);
         }
-    }
-
-    private function prepareEntities() {
-        $providers = [];
-        foreach ($this->metadata->getMetadata() as $meta) {
-            if (!$this->isIgnoredEntity($meta)) {
-                $name = $this->getProviderName($meta);
-                $providers[$name][] = $meta;
-            }
-        }
-        return $providers;
-    }
-
-    private function isIgnoredEntity($meta) {
-        $reflectionClass = new \ReflectionClass($meta->getName());
-        $reader = new AnnotationReader();
-        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->ignored : false;
-    }
-    private function isAnonymousAccess($meta) {
-        $reflectionClass = new \ReflectionClass($meta->getName());
-        $reader = new AnnotationReader();
-        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->anonymousAccess : false;
-    }
-    private function getProviderName($meta) {
-        $reflectionClass = new \ReflectionClass($meta->getName());
-        $reader = new AnnotationReader();
-        return ($annotation = $reader->getClassAnnotation($reflectionClass, AndroidAnnotation::class)) ? $annotation->provider.'s' : 'Entities';
     }
 
     private function generateProvider($provider, $entities) {
@@ -87,14 +57,7 @@ class EntityGenerator extends Generator {
         $this->output->writeln(' -> <info>OK</info>');
     }
 
-    private function getEntityNames($entities) {
-        $names = [];
-        foreach ($entities as $entity)
-            $names[] = $this->getEntityName($entity->getName());
-        return $names;
-    }
-
-    private function generateSync($provider, $entities) {
+    private function generateSync($provider, $entities, $anonymous) {
         $this->output->write('Generate: ' . $provider . 'SyncService');
         $target = $this->javaPath . '/sync/' . $provider . 'SyncService.java';
         // echo '-> target:' . $target . PHP_EOL;
@@ -109,21 +72,29 @@ class EntityGenerator extends Generator {
         $this->renderFile('SyncAdapterTemplate.java.twig', $target, [
             'package' => $this->packageName,
             'provider' => $provider,
+            'anonymous' => $anonymous,
             'entities' => $entities,
         ]);
         $this->output->writeln(' -> <info>OK</info>');
     }
 
-    private function generateEntity($provider, $entity) {
-        $entityName = $this->getEntityName($entity->getName());
-        $anonymousAccess = $this->isAnonymousAccess($entity);
+    private function generateEntity($provider, $entity, $anonymous) {
+        $entityName = $this->parser->getEntityName($entity->getName());
+        $mappings = $this->getAssociationMappings($entity);
         $this->output->write('Generate: Entity ' . $entityName);
         $target = $this->javaPath . '/entity/' . $entityName . '.java';
         $withData = !empty($entity->getLifecycleCallbacks('postPersist'));
+        $dataPropertyName = $withData ? $this->getDataPropertyName($entity) : null;
 
         $properties = [];
+        foreach ($mappings as $mapping) {
+            foreach ($mapping['joinColumns'] as $column => $targetColumn) {
+                $type = $this->getFieldEntityType($mapping['targetEntity'], $targetColumn);
+                $properties[] = [ 'type' => $this->typeToJava($type), 'name' => $column, 'targetEntity' => $this->parser->getEntityName($mapping['targetEntity']) ];
+            }
+        }
         foreach ($entity->getFieldNames() as $name) {
-            if (in_array($name, ['id', 'sourceId', 'account', 'data'])) continue;
+            if (in_array($name, ['id', 'sourceId', 'account', 'data', $dataPropertyName])) continue;
             $field = $entity->getFieldMapping($name);
             $properties[] = [ 'type' => $this->typeToJava($field['type']), 'name' => $field['fieldName'] ];
         }
@@ -131,11 +102,12 @@ class EntityGenerator extends Generator {
         $params = [
             'package' => $this->packageName,
             'entityName' => $entityName,
-            'anonymousAccess' => $anonymousAccess,
+            'anonymousAccess' => $anonymous,
             'withData' => $withData,
             'providerName' => $provider,
             'directoryId' => self::$DIRECTORY_ID,
             'properties' => $properties,
+            'dataPropertyName' => $dataPropertyName,
         ];
         self::$DIRECTORY_ID += 2;
 
@@ -147,29 +119,52 @@ class EntityGenerator extends Generator {
         switch ($type) {
             case 'boolean'; return 'bool';
             case 'integer'; return 'int';
+            case 'long'; return 'long';
             case 'text'; return 'String';
             default: return ucfirst($type);
         }
     }
 
-    public function extractProviderNames() {
-        return array_keys($this->providers);
+    private function getAssociationMappings($entity) {
+        $result = [];
+        $mappings = $entity->getAssociationMappings();
+        foreach ($mappings as $assoc) {
+            if ($assoc['type'] == 2) {
+                $result[] = [
+                    'targetEntity' => $assoc['targetEntity'],
+                    'joinColumns' => $assoc['sourceToTargetKeyColumns'],
+                ];
+            }
+        }
+        return $result;
     }
 
-    public function extractEntityNames() {
-        $names = [];
-        foreach ($this->providers as $entities)
-            foreach ($entities as $entity)
-                $names[] = $this->getEntityName($entity->getName());
-        return $names;
+    private function getDataPropertyName($meta) {
+        $reflectionClass = new \ReflectionClass($meta->getName());
+        $reader = new AnnotationReader();
+        foreach ($reflectionClass->getProperties() as $property) {
+            $annotations = $reader->getPropertyAnnotations($property);
+            foreach ($annotations as $annotation) {
+                if ($annotation instanceof File)
+                    return $property->getName();
+            }
+        }
+        return null;
     }
 
-    public function extractUserClass() {
-
+    private function getEntityByName($name) {
+        foreach ($this->providers as $provider => $metaData)
+            foreach ($metaData['entities'] as $entity)
+                if ($entity->getName() == $name)
+                    return $entity;
+        return null;
     }
 
-    private function getEntityName($entity) {
-        return preg_replace('/(\w+\\\\)*/', '', $entity);
+    private function getFieldEntityType($entityName, $field) {
+        $entity = $this->getEntityByName($entityName);
+        $type = $entity->getFieldMapping($field);
+        if ($type['id']) $type['type'] = 'long';
+        return $type['type'];
     }
 
 }

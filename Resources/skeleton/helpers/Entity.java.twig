@@ -5,7 +5,11 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
-import android.text.TextUtils;
+
+import android.content.*;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.support.v4.content.CursorLoader;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,6 +23,8 @@ import android.util.Log;
 
 import {{ package }}.Constants;
 import {{ package }}.console.Api;
+import {{ package }}.utils.StringUtils;
+import {{ package }}.utils.CloseUtils;
 
 public abstract class Entity {
 
@@ -41,9 +47,9 @@ public abstract class Entity {
 
     public interface WithData {
         long getSize();
-        void setSize(long size);
         String getData();
         void setData(String data);
+        String getDataFieldName();
     }
 
     public enum MarkedAs {
@@ -53,6 +59,34 @@ public abstract class Entity {
         private final String value;
         MarkedAs(String value){ this.value = value; }
         public String value(){ return value; }
+    }
+
+    public static abstract class BaseLoader extends CursorLoader {
+        private final ForceLoadContentObserver observer = new ForceLoadContentObserver();
+        private final Account account;
+        private final Bundle args;
+        private Uri contentUri;
+        public BaseLoader(Context context, Account account, Uri uri, Bundle args) {
+            super(context);
+            this.account = account;
+            this.args = args;
+            this.contentUri = uri;
+        }
+        @Override
+        public Cursor loadInBackground() {
+            String where = BaseColumns.getWhere(account);
+            if (args != null && !args.isEmpty()) {
+                for (String key : args.keySet())
+                    where += " AND " + key + " = '" + args.getString(key) + "'";
+            }
+            where += " AND " + BaseColumns.DELETED + " = 0";
+            Cursor cursor = getContext().getContentResolver().query(contentUri, null, where, null, null);
+            if (cursor != null) {
+                cursor.getCount();
+                cursor.registerContentObserver(observer);
+            }
+            return cursor;
+        }
     }
 
     protected long id, sourceId;
@@ -96,7 +130,7 @@ public abstract class Entity {
     public abstract String getApiPath();
 
     public boolean hasData() {
-        return this instanceof WithData && !TextUtils.isEmpty(((WithData) this).getData());
+        return this instanceof WithData && !StringUtils.isEmpty(((WithData) this).getData());
     }
 
     public void fromJSON(Account account, JSONObject json) {
@@ -122,17 +156,52 @@ public abstract class Entity {
         return o instanceof Entity && o.getClass().getSimpleName().equals(this.getClass().getSimpleName()) && getSourceId() == ((Entity) o).getSourceId();
     }
 
-    /**
-     * Exécute une synchronisation de données (Entity) Client &lt;-&gt; Serveur
-     * @param clzz Class de l'entité a utiliser.
-     * @param account Compte a synchroniser
-     * @param fullSync Synchronisation complète
-     * @param lastSync Timestamp (long) de la dernière synchronisation
-     * @param cr Source de données (ContentResolver)
-     * @param syncResult Résultats (SyncResult) de synchronisation pour le syncadapter
-     * @throws AuthenticatorException Erreur d'authentification
-     * @throws IOException Erreur de connexion au server
-     */
+    public static long contains(ContentResolver cr, Uri contentUri, Account account, Entity entity) {
+        if (entity == null) return 0;
+        long id = 0;
+        String where = BaseColumns.getWhere(account);
+        where += " AND " + BaseColumns.SOURCE_ID + " = " + entity.getSourceId();
+        Cursor cursor = cr.query(contentUri, new String[] { BaseColumns.ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) id = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        return id;
+    }
+
+    public static long getIdFromSourceId(ContentResolver cr, Uri contentUri, Account account, long sourceId) {
+        //Log.v(TAG, "--> getIdFromSourceId: " + sourceId);
+        if (sourceId == 0) return 0;
+        long localId = 0;
+        String where = BaseColumns.ACCOUNT + " = '" + account.name + "' AND " + BaseColumns.SOURCE_ID + " = " + sourceId;
+        //Log.v(TAG, "--> where: " + where);
+        Cursor cursor = cr.query(contentUri, new String[] { BaseColumns.ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) localId = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        //Log.v(TAG, "--> localId: " + localId);
+        return localId;
+    }
+    public static long getSourceIdFromId(ContentResolver cr, Uri contentUri, Account account, long localId) {
+        long sourceId = 0;
+        String where = BaseColumns.ACCOUNT + " = '" + account.name + "' AND " + BaseColumns.ID + " = " + localId;
+        Cursor cursor = cr.query(contentUri, new String[] { BaseColumns.SOURCE_ID }, where, null, null);
+        if (cursor != null && cursor.moveToNext()) sourceId = cursor.getLong(0);
+        CloseUtils.closeQuietly(cursor);
+        return sourceId;
+    }
+
+    public static int delete(ContentResolver cr, Uri contentUri, Account account, long localId, boolean callerIsSyncAdapter) {
+        Uri uri = ContentUris.withAppendedId(contentUri, localId);
+        int count;
+        if (callerIsSyncAdapter) {
+            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
+            count = cr.delete(uri, null, null);
+        } else {
+            ContentValues values = new ContentValues();
+            values.put(BaseColumns.DELETED, true);
+            count = cr.update(uri, values, null, null);
+        }
+        return count;
+    }
+
     public static <T extends Entity> void performSync(Class<T> clzz, Account account, boolean fullSync, long lastSync, ContentResolver cr, SyncResult syncResult) throws AuthenticatorException, IOException {
         if (Constants.DEBUG) Log.i(TAG, "-> performSync: " + clzz.getName().substring(clzz.getName().lastIndexOf(".") + 1) + ", fullSync: " + fullSync + ", lastSync: " + lastSync);
         try {
@@ -162,20 +231,20 @@ public abstract class Entity {
                     values.put(BaseColumns.SOURCE_ID, sourceId);
                     cr.update(uri, values, null, null);
                     syncResult.stats.numInserts++;
-//					if (insert instanceof WithData) {
-//						insert.setSourceId(sourceId);
-//						long localSize = getLocalFileSize(cr, insert.getUri());
-//						//Log.v(TAG, "localSize: "+ localSize);
-//						if (localSize > 0) {
-//							String path = Api.getInstance().upload(account, insert);
-//							if (path != null) {
-//								((WithData) insert).setData(path);
-//								//Api.getInstance().save(account, insert);
-//								m = clzz.getMethod("update", Account.class, clzz, boolean.class);
-//								int cnt = (Integer) m.invoke(null, account, insert, true);
-//							}
-//						}
-//					}
+					if (insert instanceof WithData) {
+						insert.setSourceId(sourceId);
+						long localSize = getLocalFileSize(cr, insert.getUri());
+						//Log.v(TAG, "localSize: "+ localSize);
+						if (localSize > 0) {
+							String path = Api.getInstance().upload(account, insert);
+							if (path != null) {
+								((WithData) insert).setData(path);
+								//Api.getInstance().save(account, insert);
+								m = clzz.getMethod("update", Account.class, clzz, boolean.class);
+								int cnt = (Integer) m.invoke(null, account, insert, true);
+							}
+						}
+					}
                 }
             }
             m = clzz.getMethod("getMarkedAs", Account.class, MarkedAs.class);
@@ -190,20 +259,20 @@ public abstract class Entity {
                     values.put(BaseColumns.DIRTY, 0);
                     cr.update(uri, values, null, null);
                     syncResult.stats.numUpdates++;
-//					if (update instanceof WithData) {
-//						long localSize = getLocalFileSize(cr, update.getUri());
-//						long remoteSize = Api.getInstance().fileSize(account, update);
-//						//Log.v(TAG, "---> localSize: " + localSize + ", remoteSize: " + remoteSize);
-//						if (localSize > 0 && remoteSize > 0 && localSize != remoteSize) {
-//							String path = Api.getInstance().upload(account, update);
-//							if (path != null) {
-//								((WithData) update).setData(path);
-//								//Api.getInstance().save(account, insert);
-//								m = clzz.getMethod("update", Account.class, clzz, boolean.class);
-//								int cnt = (Integer) m.invoke(null, account, update, true);
-//							}
-//						}
-//					}
+					if (update instanceof WithData) {
+						long localSize = ((WithData) update).getSize();
+						long remoteSize = Api.getInstance().fileSize(account, update);
+						//Log.v(TAG, "---> localSize: " + localSize + ", remoteSize: " + remoteSize);
+						if (localSize > 0 && localSize != remoteSize) {
+							String path = Api.getInstance().upload(account, update);
+							if (path != null) {
+								((WithData) update).setData(path);
+								//Api.getInstance().save(account, insert);
+    							m = clzz.getMethod("update", Account.class, clzz, boolean.class);
+								int cnt = (Integer) m.invoke(null, account, update, true);
+							}
+						}
+					}
                 }
             }
             if (fullSync) {
@@ -221,9 +290,9 @@ public abstract class Entity {
                         //Log.v(TAG, "--> insert to local: " + remote);
                         Uri uri;
                         if (remote instanceof WithData) {
-                            long remoteSize = Api.getInstance().fileSize(account, ((WithData) remote).getData());
+                            long remoteSize = Api.getInstance().fileSize(account, remote);
                             Uri file = null;
-                            if (remoteSize > 0) file = Api.getInstance().download(account, ((WithData) remote).getData());
+                            if (remoteSize > 0) file = Api.getInstance().download(account, remote);
                             m = clzz.getMethod("insert", Account.class, clzz, Uri.class, boolean.class);
                             uri = (Uri) m.invoke(null, account, remote, file, true);
                         } else {
@@ -240,8 +309,8 @@ public abstract class Entity {
                         boolean change = (Boolean) m.invoke(null, local, remote);
                         boolean fileChange = false;
                         if (remote instanceof WithData) {
-                            long localSize = !TextUtils.isEmpty(((WithData) local).getData()) ? getLocalFileSize(cr, local.getUri()) : 0;
-                            long remoteSize = Api.getInstance().fileSize(account, ((WithData) remote).getData());
+                            long localSize = ((WithData) local).getSize();
+                            long remoteSize = Api.getInstance().fileSize(account, remote);
                             fileChange = remoteSize > 0 && localSize != remoteSize;
                             //Log.v(TAG, "local: " + localSize + ", remote: " + remoteSize + ", change: " + fileChange);
                             change = change || fileChange;
@@ -250,7 +319,7 @@ public abstract class Entity {
                             //Log.v(TAG, "--> update to local: " + remote);
                             int cnt;
                             if (fileChange) {
-                                Uri file = Api.getInstance().download(account, ((WithData) remote).getData());
+                                Uri file = Api.getInstance().download(account, remote);
                                 m = clzz.getMethod("update", Account.class, clzz, Uri.class, boolean.class);
                                 cnt = (Integer) m.invoke(null, account, remote, file, true);
                             } else {

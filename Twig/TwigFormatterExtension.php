@@ -28,6 +28,7 @@ class TwigFormatterExtension extends \Twig_Extension {
             'sqlName' => new \Twig_Filter_Method($this, '_sqlName'),
             'sqlType' => new \Twig_Filter_Method($this, '_sqlType'),
             'attrName' => new \Twig_Filter_Method($this, '_attrName'),
+            'ns2Name' => new \Twig_Filter_Method($this, '_ns2Name'),
         );
     }
 
@@ -131,7 +132,9 @@ class TwigFormatterExtension extends \Twig_Extension {
         else {
             switch ($type) {
                 case 'bool': return 'INTEGER';
-                case 'int': return 'INTEGER';
+                case 'int':
+                case 'long':
+                    return 'INTEGER';
                 case 'float':
                 case 'double':
                     return 'REAL';
@@ -155,6 +158,22 @@ class TwigFormatterExtension extends \Twig_Extension {
         }
         else {
             return lcfirst(str_replace($separator, '', ucwords($name, $separator)));
+        }
+    }
+
+    /**
+     * Perform an namespace to entityName conversion
+     *
+     * @param string $ns
+     * @return string
+     */
+    public function _ns2Name($ns)
+    {
+        if (!isset($ns)) {
+            return null;
+        }
+        else {
+            return preg_replace('/(\w+\\\\)*/', '', $ns);
         }
     }
 }

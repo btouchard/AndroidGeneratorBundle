@@ -16,7 +16,7 @@ import {{ package }}.Constants;
 import {{ package }}.helpers.AccountHelper;
 import {{ package }}.helpers.Entity;
 {% for entity in entities %}
-import {{ package }}.entity.{{ entity }};
+import {{ package }}.entity.{{ entity.name|ns2Name }};
 {% endfor %}
 
 import java.io.IOException;
@@ -45,13 +45,18 @@ public class {{ provider }}SyncAdapter extends BaseSyncAdapter {
 		ContentResolver cr = getContext().getContentResolver();
 
 		try {
+{% if anonymous %}
+{% for entity in entities %}
+			Entity.performSync({{ entity.name|ns2Name }}.class, account, fullSync, lastSync, cr, syncResult);
+{% endfor %}
+{% else %}
 			String authToken = AccountHelper.blockingGetAuthToken(account, false);
-			//Log.v(TAG, "authToken: " + authToken);
 			if (!TextUtils.isEmpty(authToken)) {
 {% for entity in entities %}
-				Entity.performSync({{ entity }}.class, account, fullSync, lastSync, cr, syncResult);
+				Entity.performSync({{ entity.name|ns2Name }}.class, account, fullSync, lastSync, cr, syncResult);
 {% endfor %}
 			}
+{% endif %}
 		} catch (final AuthenticatorException e) {
 			Log.e(TAG, "AuthenticatorException", e);
 			syncResult.stats.numAuthExceptions++;

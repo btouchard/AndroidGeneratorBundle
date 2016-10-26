@@ -15,7 +15,7 @@ import android.util.Log;
 
 import {{ package }}.Constants;
 {% for entity in entities %}
-import {{ package }}.entity.{{ entity }};
+import {{ package }}.entity.{{ entity.name|ns2Name }};
 {% endfor %}
 import {{ package }}.helpers.DatabaseHelper;
 
@@ -31,8 +31,8 @@ public class {{ provider }}Provider extends ContentProvider {
 	static {
 		sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 {% for entity in entities %}
-		sUriMatcher.addURI(AUTHORITY, {{ entity }}.TABLE, {{ entity }}.DIRECTORY);
-		sUriMatcher.addURI(AUTHORITY, {{ entity }}.TABLE + "/#", {{ entity }}.ITEM);
+		sUriMatcher.addURI(AUTHORITY, {{ entity.name|ns2Name }}.TABLE, {{ entity.name|ns2Name }}.DIRECTORY);
+		sUriMatcher.addURI(AUTHORITY, {{ entity.name|ns2Name }}.TABLE + "/#", {{ entity.name|ns2Name }}.ITEM);
 {% endfor %}
 	}
 
@@ -48,10 +48,10 @@ public class {{ provider }}Provider extends ContentProvider {
 	public String getType(@NonNull Uri uri) {
 		switch(sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.DIRECTORY:
-			return {{ entity }}.CONTENT_TYPE;
-		case {{ entity }}.ITEM:
-			return {{ entity }}.MIME_TYPE;
+		case {{ entity.name|ns2Name }}.DIRECTORY:
+			return {{ entity.name|ns2Name }}.CONTENT_TYPE;
+		case {{ entity.name|ns2Name }}.ITEM:
+			return {{ entity.name|ns2Name }}.MIME_TYPE;
 {% endfor %}
 		default: 
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -115,7 +115,7 @@ public class {{ provider }}Provider extends ContentProvider {
 	private boolean isTableUri(Uri uri) {
 		switch(sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.DIRECTORY:
+		case {{ entity.name|ns2Name }}.DIRECTORY:
 			return true;
 {% endfor %}
 		default: 
@@ -125,7 +125,7 @@ public class {{ provider }}Provider extends ContentProvider {
 	private boolean isItemUri(Uri uri) {
 		switch(sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.ITEM:
+		case {{ entity.name|ns2Name }}.ITEM:
 			return true;
 {% endfor %}
 		default: 
@@ -136,9 +136,9 @@ public class {{ provider }}Provider extends ContentProvider {
 	private String getTable(Uri uri) {
 		switch (sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.DIRECTORY:
-		case {{ entity }}.ITEM:
-			return {{ entity }}.TABLE;
+		case {{ entity.name|ns2Name }}.DIRECTORY:
+		case {{ entity.name|ns2Name }}.ITEM:
+			return {{ entity.name|ns2Name }}.TABLE;
 {% endfor %}
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -147,9 +147,9 @@ public class {{ provider }}Provider extends ContentProvider {
 	private Uri getContentUri(Uri uri) {
 		switch (sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.DIRECTORY:
-		case {{ entity }}.ITEM:
-			return {{ entity }}.CONTENT_URI;
+		case {{ entity.name|ns2Name }}.DIRECTORY:
+		case {{ entity.name|ns2Name }}.ITEM:
+			return {{ entity.name|ns2Name }}.CONTENT_URI;
 {% endfor %}
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -158,9 +158,9 @@ public class {{ provider }}Provider extends ContentProvider {
 	private String[] getProjection(Uri uri) {
 		switch (sUriMatcher.match(uri)) {
 {% for entity in entities %}
-		case {{ entity }}.DIRECTORY:
-		case {{ entity }}.ITEM:
-			return {{ entity }}.Columns.FULL_PROJECTION;
+		case {{ entity.name|ns2Name }}.DIRECTORY:
+		case {{ entity.name|ns2Name }}.ITEM:
+			return {{ entity.name|ns2Name }}.Columns.FULL_PROJECTION;
 {% endfor %}
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);

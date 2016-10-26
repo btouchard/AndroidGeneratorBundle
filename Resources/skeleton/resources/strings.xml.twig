@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">{{ appName }}</string>
+    
     <string name="account_type">{{ package }}.account</string>
     <string name="account_name">{{ appName }}</string>
 
@@ -10,8 +12,8 @@
     <string name="submit_login">Connexion</string>
     <string name="close_alert">Fermer</string>
 
-{% for provider in providers %}
-    <string name="provider_{{ provider|lower }}_label">{{ provider }}</string>
-    <string name="provider_{{ provider|lower }}_authority">{{ package }}.providers.{{ provider }}</string>
-{% endfor %}
+    {% for provider in providers %}
+        <string name="provider_{{ provider|slug }}_label">{{ provider }}</string>
+        <string name="provider_{{ provider|slug }}_authority">{{ package }}.providers.{{ provider }}</string>
+    {% endfor %}
 </resources>

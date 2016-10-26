@@ -2,12 +2,20 @@
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
-class Generator {
+use Symfony\Component\Console\Output\OutputInterface;
 
-    private $twig;
+abstract class Generator {
 
-    public function __construct(\Twig_Environment $twig) {
+    protected $twig;
+    protected $output;
+    protected $packageName;
+    protected $path;
+
+    public function __construct(\Twig_Environment $twig, OutputInterface $output, $packageName, $path) {
         $this->twig = $twig;
+        $this->output = $output;
+        $this->packageName = $packageName;
+        $this->path = $path;
     }
 
     protected function render($template, $parameters)
@@ -20,6 +28,6 @@ class Generator {
         if (!is_dir(dirname($target))) {
             mkdir(dirname($target), 0777, true);
         }
-        return file_put_contents($target, $this->render($template, $parameters));
+        file_put_contents($target, $this->render($template, $parameters));
     }
 }

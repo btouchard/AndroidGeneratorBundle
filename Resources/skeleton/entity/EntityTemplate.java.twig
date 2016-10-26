@@ -1,20 +1,16 @@
 package {{ package }}.entity;
 
 import android.accounts.Account;
-import android.accounts.AuthenticatorException;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.content.CursorLoader;
 import android.util.Log;
 
 import {{ package }}.Constants;
-import com.kolapsis.app.console.Api;
 import {{ package }}.helpers.Entity;
 import {{ package }}.providers.{{ providerName }}Provider;
 import {{ package }}.utils.CloseUtils;
@@ -26,7 +22,6 @@ import {{ package }}.utils.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 {% if withData %}
 import java.io.*;
 {% endif %}
@@ -45,19 +40,27 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
     public static final int ITEM 				= {{ directoryId+1 }};
 
     private static Context sContext;
-    private static ContentResolver sContentResolver;
 {% if withData %}
     private static String sPath;
 {% endif %}
 
     public static void setContext(Context context) {
         sContext = context;
-        sContentResolver = sContext.getContentResolver();
 {% if withData %}
         sPath = sContext.getFilesDir().getPath() + "/" + {{ entityName }}.TABLE + "/";
         File dir = new File(sPath);
         if (!dir.exists()) dir.mkdir();
 {% endif %}
+    }
+    public static Context getContext() {
+        if (sContext != null)
+            return sContext;
+        return null;
+    }
+    public static ContentResolver getContentResolver() {
+        if (sContext != null)
+            return sContext.getContentResolver();
+        return null;
     }
 
 {% if withData %}
@@ -65,9 +68,9 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         InputStream inputStream = null;
         OutputStream outputStream = null;
         try {
-            inputStream = sContentResolver.openInputStream(cUri);
+            inputStream = getContentResolver().openInputStream(cUri);
             if (inputStream != null) {
-                outputStream = sContentResolver.openOutputStream(uri);
+                outputStream = getContentResolver().openOutputStream(uri);
                 FileUtils.copyStream(inputStream, outputStream);
             }
         } catch (FileNotFoundException e) {
@@ -127,72 +130,14 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE + ";";
     }
 
-    public static class {{ entityName }}Loader extends CursorLoader {
-        private final ForceLoadContentObserver mObserver = new ForceLoadContentObserver();
-        private final Account mAccount;
-        private final Bundle mArgs;
+    public static class {{ entityName }}Loader extends Entity.BaseLoader {
         public {{ entityName }}Loader(Context context, Account account, Bundle args) {
-            super(context);
-            if (sContext == null) setContext(context);
-            mAccount = account;
-            mArgs = args;
-        }
-        @Override
-        public Cursor loadInBackground() {
-            String where = BaseColumns.getWhere(mAccount);
-            if (mArgs != null && !mArgs.isEmpty()) {
-                for (String key : mArgs.keySet())
-                    where += " AND " + key + " = '" + mArgs.getString(key) + "'";
-            }
-            where += " AND " + BaseColumns.DELETED + " = 0";
-            Cursor cursor = sContentResolver.query(CONTENT_URI, null, where, null, null);
-            if (cursor != null) {
-                cursor.getCount();
-                cursor.registerContentObserver(mObserver);
-            }
-            return cursor;
+            super(context, account, CONTENT_URI, args);
         }
     }
-
-{% if anonymousAccess %}
-    public static class Async{{ entityName }}Task extends AsyncTask<Void, Void, List<{{ entityName }}>> {
-        @Override
-        protected List<{{ entityName }}> doInBackground(Void... voids) {
-            try {
-                return Api.getInstance().load({{ entityName }}.class, 0);
-            } catch (AuthenticatorException | IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-            return null;
-        }
-    }
-{% else %}
-    public static class Async{{ entityName }}Task extends AsyncTask<Account, Void, List<{{ entityName }}>> {
-        @Override
-        protected List<{{ entityName }}> doInBackground(Account... accounts) {
-            try {
-                return Api.getInstance().load({{ entityName }}.class, accounts[0], 0);
-            } catch (AuthenticatorException | IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-            return null;
-        }
-    }
-{% endif %}
 
     public static List<{{ entityName }}> getMarkedAs(Account account, MarkedAs mark) {
         return select(account, mark.value());
-    }
-
-    public static long contains(Account account, {{ entityName }} entity) {
-        if (entity == null) return 0;
-        long id = 0;
-        String where = BaseColumns.getWhere(account);
-        where += " AND " + Columns.SOURCE_ID + " = " + entity.getSourceId();
-        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.ID }, where, null, null);
-        if (cursor != null && cursor.moveToNext()) id = cursor.getLong(0);
-        CloseUtils.closeQuietly(cursor);
-        return id;
     }
 
     public static boolean hasChange({{ entityName }} local, {{ entityName }} remote) {
@@ -207,30 +152,20 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         return false;
     }
 
+    public static long contains(Account account, {{ entityName }} entity) {
+        return Entity.contains(getContentResolver(), CONTENT_URI, account, entity);
+    }
+
     public static long getIdFromSourceId(Account account, long sourceId) {
-        //Log.v(TAG, "--> getIdFromSourceId: " + sourceId);
-        if (sourceId == 0) return 0;
-        long localId = 0;
-        String where = Columns.ACCOUNT + " = '" + account.name + "' AND " + Columns.SOURCE_ID + " = " + sourceId;
-        //Log.v(TAG, "--> where: " + where);
-        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.ID }, where, null, null);
-        if (cursor != null && cursor.moveToNext()) localId = cursor.getLong(0);
-        CloseUtils.closeQuietly(cursor);
-        //Log.v(TAG, "--> localId: " + localId);
-        return localId;
+        return Entity.getIdFromSourceId(getContentResolver(), CONTENT_URI, account, sourceId);
     }
     public static long getSourceIdFromId(Account account, long localId) {
-        long sourceId = 0;
-        String where = Columns.ACCOUNT + " = '" + account.name + "' AND " + Columns.ID + " = " + localId;
-        Cursor cursor = sContentResolver.query(CONTENT_URI, new String[] { Columns.SOURCE_ID }, where, null, null);
-        if (cursor != null && cursor.moveToNext()) sourceId = cursor.getLong(0);
-        CloseUtils.closeQuietly(cursor);
-        return sourceId;
+        return Entity.getSourceIdFromId(getContentResolver(), CONTENT_URI, account, localId);
     }
 
     public static {{ entityName }} select(Uri uri) {
         {{ entityName }} entity = null;
-        Cursor cursor = sContentResolver.query(uri, null, null , null, null);
+        Cursor cursor = getContentResolver().query(uri, null, null , null, null);
         if (cursor != null && cursor.moveToNext()) entity = cursorTo{{ entityName }}(cursor);
         CloseUtils.closeQuietly(cursor);
         return entity;
@@ -248,7 +183,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         List<{{ entityName }}> list = new ArrayList<>();
         String w = BaseColumns.getWhere(account);
         if (!StringUtils.isEmpty(where)) w += " AND (" + where + ")";
-        Cursor cursor = sContentResolver.query(CONTENT_URI, null, w , null, order);
+        Cursor cursor = getContentResolver().query(CONTENT_URI, null, w , null, order);
         if (cursor != null && cursor.moveToFirst())
             do { list.add(cursorTo{{ entityName }}(cursor)); }
             while (cursor.moveToNext());
@@ -268,7 +203,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         if (callerIsSyncAdapter)
             uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
         ContentValues values = getContentValues(account, entity, fileUri);
-        Uri newUri = sContentResolver.insert(uri, values);
+        Uri newUri = getContentResolver().insert(uri, values);
         if (newUri != null && fileUri != null) setContent(newUri, fileUri);
         return newUri;
     }
@@ -281,7 +216,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         if (callerIsSyncAdapter)
             uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
         ContentValues values = getContentValues(account, entity);
-        Uri newUri = sContentResolver.insert(uri, values);
+        Uri newUri = getContentResolver().insert(uri, values);
         return newUri;
     }
 {% endif %}
@@ -299,7 +234,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
             uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
         ContentValues values = getContentValues(account, entity, fileUri);
         if (!callerIsSyncAdapter) values.put(Columns.DIRTY, true);
-        int count = sContentResolver.update(uri, values, null, null);
+        int count = getContentResolver().update(uri, values, null, null);
         if (count == 1 && fileUri != null) setContent(entity.getUri(), fileUri);
         return count;
     }
@@ -313,7 +248,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
             uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
         ContentValues values = getContentValues(account, entity);
         if (!callerIsSyncAdapter) values.put(Columns.DIRTY, true);
-        int count = sContentResolver.update(uri, values, null, null);
+        int count = getContentResolver().update(uri, values, null, null);
         return count;
     }
 {% endif %}
@@ -322,23 +257,10 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         return delete(account, localId, false);
     }
     public static int delete(Account account, long localId, boolean callerIsSyncAdapter) {
-        Uri uri = ContentUris.withAppendedId(CONTENT_URI, localId);
-        int count;
-        if (callerIsSyncAdapter) {
-            uri = uri.buildUpon().appendQueryParameter(Constants.CALLER_IS_SYNCADAPTER, "true").build();
-            count = sContentResolver.delete(uri, null, null);
-        } else {
-            ContentValues values = new ContentValues();
-            values.put(Columns.DELETED, true);
-            count = sContentResolver.update(uri, values, null, null);
-        }
-        return count;
+        return Entity.delete(getContentResolver(), CONTENT_URI, account, localId, callerIsSyncAdapter);
     }
 
 {% if withData %}
-    public static ContentValues getContentValues(Account account, {{ entityName }} entity) {
-        return getContentValues(account, entity, null);
-    }
     public static ContentValues getContentValues(Account account, {{ entityName }} entity, Uri fileUri) {
         ContentValues values = {{ entityName|lcfirst }}ToContent(entity);
         if (entity.getId() == 0) values.put(Columns.ACCOUNT, account.name);
@@ -373,6 +295,10 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 {% for property in properties %}
         entity.set{{ property.name|attrName|ucfirst }}(c.get{{ property.type|ucfirst }}(c.getColumnIndex(Columns.{{ property.name|sqlName|upper }})));
 {% endfor %}
+{% if withData %}
+        entity.setData(c.getString(c.getColumnIndex(Columns.DATA)));
+        entity.setSize(c.getLong(c.getColumnIndex(Columns.SIZE)));
+{% endif %}
         entity.setDirty(c.getInt(c.getColumnIndex(Columns.DIRTY)) == 1);
         entity.setDelete(c.getInt(c.getColumnIndex(Columns.DELETED)) == 1);
         return entity;
@@ -412,8 +338,17 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         super.fromJSON(account, json);
         try {
 {% for property in properties %}
+{% if property.targetEntity is defined %}
+            if (json.has(Columns.{{ property.name|sqlName|upper }}))
+                set{{ property.name|attrName|ucfirst }}({{ property.targetEntity }}.getIdFromSourceId(account, json.get{{ property.type|ucfirst }}(Columns.{{ property.name|sqlName|upper }})));
+{% else %}
             if (json.has(Columns.{{ property.name|sqlName|upper }}))
                 set{{ property.name|attrName|ucfirst }}(json.get{{ property.type|ucfirst }}(Columns.{{ property.name|sqlName|upper }}));
+{% endif %}
+{% if withData %}
+            if (json.has(getDataFieldName()))
+                setData(json.getString(getDataFieldName()));
+{% endif %}
 {% endfor %}
         } catch (JSONException e) {
             Log.e(TAG, "JSONException: " + e.getMessage());
@@ -425,7 +360,11 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
         JSONObject json = super.asJSON(account);
         try {
 {% for property in properties %}
+{% if property.targetEntity is defined %}
+            json.put(Columns.{{ property.name|sqlName|upper }}, {{ property.targetEntity }}.getSourceIdFromId(account, get{{ property.name|attrName|ucfirst }}()));
+{% else %}
             json.put(Columns.{{ property.name|sqlName|upper }}, get{{ property.name|attrName|ucfirst }}());
+{% endif %}
 {% endfor %}
         } catch (JSONException e) {
             Log.e(TAG, "JSONException: " + e.getMessage());
@@ -454,6 +393,11 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 
 {% endfor %}
 {% if withData %}
+    @Override
+    public String getDataFieldName() {
+        return "{{ dataPropertyName }}";
+    }
+
     @Override
     public String getData() {
         return data;

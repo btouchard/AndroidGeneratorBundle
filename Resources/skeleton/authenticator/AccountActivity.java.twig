@@ -5,7 +5,6 @@ import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
 import android.accounts.AuthenticatorException;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -26,8 +25,6 @@ public class AccountActivity extends AccountAuthenticatorActivity {
 
     public static final String TAG = Constants.APP_NAME + ".AccountActivity";
 
-    private AccountManager mAccountManager;
-    private ProgressDialog mProgressDialog;
     private Boolean mConfirmCredentials;
 
     @Override
@@ -36,7 +33,6 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         setContentView(R.layout.account_auth);
 
         AccountHelper.setContext(this);
-        mAccountManager = AccountManager.get(this);
 
         String username = getIntent().getStringExtra(Authenticator.PARAM_USERNAME);
         mConfirmCredentials = getIntent().getBooleanExtra(Authenticator.PARAM_CONFIRM_CREDENTIALS, false);
@@ -68,7 +64,7 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         Log.i(TAG, "-> username: " + username + ", pwd: " + pwd);
         final Account account = AccountHelper.getAccountByTypeAndName(Constants.ACCOUNT_TYPE, username);
         if (account == null) return;
-        mAccountManager.setPassword(account, pwd);
+        AccountHelper.setPassword(account, pwd);
         final Intent intent = new Intent();
         intent.putExtra(AccountManager.KEY_BOOLEAN_RESULT, true);
         intent.putExtra(AccountManager.KEY_PASSWORD, user.getString(UserColumns.PASSWORD));
@@ -85,7 +81,7 @@ public class AccountActivity extends AccountAuthenticatorActivity {
         user.remove(UserColumns.USERNAME);
         user.remove(UserColumns.PASSWORD);
         final Account account = new Account(username, Constants.ACCOUNT_TYPE);
-        mAccountManager.addAccountExplicitly(account, pwd, user);
+        AccountHelper.addAccountExplicitly(account, pwd, user);
 {% for provider in providers %}
         ContentResolver.setSyncAutomatically(account, {{ provider }}Provider.AUTHORITY, true);
 {% endfor %}
@@ -114,8 +110,10 @@ public class AccountActivity extends AccountAuthenticatorActivity {
             Bundle user = null;
             try {
                 String token = Api.getInstance().authenticate(username, password);
-                if (token != null)
+                if (token != null){
+                    AccountHelper.removeDefaultAccount();
                     user = Api.getInstance().loadUser(token, password);
+                }
             } catch (AuthenticatorException e) {
                 Log.e(TAG, "AuthenticatorException: " + e.getMessage(), e);
             } catch (IOException e) {
