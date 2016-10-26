@@ -1,7 +1,7 @@
 AndroidGeneratorBundle
 ======================
 
-This bundle provides a command to generate Android Application.
+This bundle provides a command to generate Android application and needed RESTApi based on your bundle definition.
 
 How it works
 ------------
