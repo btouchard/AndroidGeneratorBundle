@@ -1,5 +1,6 @@
 {
   "name" : "kolapsis/androidgenerator-bundle",
+  "minimum-stability": "dev",
   "description" : "Android Generator Bundle",
   "type" : "symfony-bundle",
   "authors" : [{
