@@ -20,7 +20,7 @@
     "sensio/framework-extra-bundle": "^3.0.2",
     "doctrine/orm": "^2.5",
     "doctrine/doctrine-bundle": "^1.6",
-    "friendsofsymfony/user-bundle": "^~2.0@dev",
+    "friendsofsymfony/user-bundle": "^2.0@dev",
     "friendsofsymfony/rest-bundle": "^2.1",
     "jms/serializer-bundle": "^1.1",
     "lexik/jwt-authentication-bundle": "^2.0"
