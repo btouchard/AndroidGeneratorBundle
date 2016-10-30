@@ -2,7 +2,7 @@
 <html lang="en-us">
 <head>
     <meta charset="UTF-8">
-    <title>Androidgeneratorbundle by btouchard</title>
+    <title>AndroidGeneratorBundle by Benjamin Touchard @ 2016</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -18,23 +18,28 @@
 </section>
 
 <section class="main-content">
-
     <h1>Automate Android application step by step</h1>
+    <h3>Full Documentation</h3>
+    <ul>
+        <li><a href="install_and_configure.html">Installation &amp; configuration</a></li>
+        <li><a href="user_config.html">User configuration for API</a></li>
+        <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
+        <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+    </ul>
 
     <h2>Step 1) Create your application and install needed dependencies</h2>
     <pre>symfony new AndroidGenDemo</pre>
-    <p>And minimum stability</p>
-    <pre>...
-"minimum-stability": "dev"
-...</pre>
-    <p>Add repository</p>
+    <p>Update your <b>composer.json</b> to add repository</p>
     <pre>...
 "repositories" : [{
     "type" : "vcs",
     "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
 }],
 ...</pre>
-    <p>to your <b>composer.json</b></p>
+    <p>And set minimum stability (project currently in dev...)</p>
+    <pre>...
+"minimum-stability": "dev"
+...</pre>
     <p>Next, you must be install bundle:</p>
     <pre>composer require kolapsis/androidgenerator-bundle master-dev</pre>
 
@@ -51,16 +56,16 @@
     new Doctrine\Bundle\DoctrineBundle\DoctrineBundle(),
     new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
     <b>new FOS\UserBundle\FOSUserBundle(),
-    new JMS\SerializerBundle\JMSSerializerBundle(),</b>
+    new JMS\SerializerBundle\JMSSerializerBundle(),
     <i>new FOS\RestBundle\FOSRestBundle(),
     new Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle(),</i>
-    <b>new Kolapsis\Bundle\AndroidGeneratorBundle\AndroidGeneratorBundle(),</b>
+    new Kolapsis\Bundle\AndroidGeneratorBundle\AndroidGeneratorBundle(),</b>
     new AppBundle\AppBundle(),
 ];</pre>
-    <p>
-        <b>Bold: Needed Bundle's</b>
-        <i>Italic: Optional</i>
-    </p>
+    <small>
+        <b>Bold: Needed Bundle's<br>
+        <i>Italic: Optional</i></b>
+    </small>
 
     <h4>Update your <b>config.yml</b></h4>
     <pre># <b>FOSUser Configuration</b>
@@ -76,7 +81,8 @@ jms_serializer:
             FOSUB:
                 namespace_prefix: "FOS\\UserBundle"
                 path: "@AppBundle/Resources/serializer"</pre>
-    <p>Model.User.yml representing User class serialization must be created later in this directory.</p>
+    <p>Model.User.yml representing User class serialization must be created later in Bundle/Resources/serializer directory.</p>
+    <p><i>Next it's for <b>FOSRestBundle</b> and <b>Lexik JWT Auth</b>, this is <b>optional</b> if you create your own API...</i></p>
     <pre># <b>FOSRest Configuration</b>
 fos_rest:
     param_fetcher_listener: true
@@ -99,26 +105,26 @@ fos_rest:
         default_format: json
         include_format: false</pre>
     <p>
-        This lines configure FOSRestBundle
+        This lines configure FOSRestBundle like:
         <ul>
             <li>all api routes start with /api</li>
             <li>api capture request as JSON and respond as JSON</li>
         </ul>
     </p>
+    <h4>Configure JWT Security (if used)</h4>
+    <p>Configure JWT (JSON Web Token) with ssl key's in <b>config.yml</b></p>
     <pre># <b>Lexik JWT Configuration</b>
 lexik_jwt_authentication:
     private_key_path: %jwt_private_key_path%
     public_key_path:  %jwt_public_key_path%
     pass_phrase:      %jwt_key_pass_phrase%
     token_ttl:        %jwt_token_ttl%</pre>
-    <p>Configure JWT (JSON Web Token) with ssl key's</p>
 
-    <h2>Step 3) Configure JWT Security</h2>
     <p>Generate SSL keys</p>
     <pre>$ mkdir -p var/jwt # For Symfony3+, no need of the -p option
 $ openssl genrsa -out var/jwt/private.pem -aes256 4096
 $ openssl rsa -pubout -in var/jwt/private.pem -out var/jwt/public.pem</pre>
-    <p>Setup <b>parameters.yml</b></p>
+    <p>Setup <b>parameters.yml</b> (and parameters.yml.dist)</p>
     <pre>parameters:
     ...
     jwt_private_key_path: %kernel.root_dir%/../var/jwt/private.pem   # ssh private key path
@@ -126,7 +132,7 @@ $ openssl rsa -pubout -in var/jwt/private.pem -out var/jwt/public.pem</pre>
     jwt_key_pass_phrase:  <i>yourkeypassphrase</i>                          # ssh key pass phrase
     jwt_token_ttl:        3600</pre>
 
-    <h2>Step 4) Configure Firewall Security</h2>
+    <h2>Step 3) Configure Firewall Security</h2>
     <pre>security:
     encoders:
         FOS\UserBundle\Model\UserInterface: sha512
@@ -190,21 +196,20 @@ $ openssl rsa -pubout -in var/jwt/private.pem -out var/jwt/public.pem</pre>
         - { path: ^/resetting,  role: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/me,         role: IS_AUTHENTICATED_FULLY }</pre>
 
-    <h2>Step 5) Configure login route</h2>
+    <h2>Step 4) Routing &amp; Doctrine</h2>
+    <h4>Configure API login route</h4>
     <p>Edit your <b>routing.yml</b> to add this lines on top:</p>
     <pre>api_login:
     path: /api/login</pre>
 
-    <h2>Step 6) Configure doctrine and create database</h2>
+    <h4>Configure doctrine and create database</h4>
     <p>Edit your <b>parameters.yml</b> and setup your database connexion.</p>
     <p>And next create database:</p>
     <pre>php bin/console doctrine:database:create</pre>
 
-    <p>
-        <a href="user_config.html">Go next step: FOSUser</a>
-    </p>
+    <p style="text-align: right">&gt; Next <a href="user_config.html">User configuration for API</a></p>
     <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">AndroidGeneratorBundle</a> is maintained by <a
                 href="https://github.com/btouchard">btouchard</a>.</span>
     </footer>
 

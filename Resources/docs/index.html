@@ -1,83 +1,94 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
+<head>
     <meta charset="UTF-8">
-    <title>Androidgeneratorbundle by btouchard</title>
+    <title>AndroidGeneratorBundle by Benjamin Touchard @ 2016</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
-  </head>
-  <body>
-    <section class="page-header">
-      <h1 class="project-name">Symfony Android Generator Bundle</h1>
-      <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">Symfony Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
         SyncService, SyncAdapter and ContentProvider for entity.<br>
         <strong>All based on your Symfony application.</strong></h2>
-    </section>
+</section>
 
-    <section class="main-content">
-      <h3>Welcome to AndroidGeneratorBundle.</h3>
-      <p>This bundle provides a command to generate Android application and needed RESTApi based on your bundle definition.</p>
+<section class="main-content">
+    <h3>Welcome to AndroidGeneratorBundle.</h3>
+    <p>This bundle provides a command to generate Android application and needed RESTApi based on your bundle
+        definition.</p>
 
-      <h3>How it works</h3>
-      <p>
-        A generator prompt some information: AppName, package, destination folder, ... After generate Android application based on YourBundle in destination folder :
-        <ul>
-          <li>Entity's and ContentProvider's based on YourBundle\Entity class.</li>
-          <li>Account based on FOSUser (YourBundle\Entity\User).</li>
-          <li>SyncService and SyncAdapter between Account and Provider's.</li>
-          <li>Base application generated contain some additional class:</li>
-        </ul>
-        Api class for authentication and communication with Api.
-        <ul>
-          <li>Authenticator system (include Account login activity and Account service).</li>
-          <li>Helper's for Account, Database and Entity</li>
-          <li>Various utilities class.</li>
-          <li>And a Constant class (root package) that containing features like DB version, API url, ...</li>
-        </ul>
-      </p>
+    <h3>How it works</h3>
+    <p>
+        A generator prompt some information: AppName, package, destination folder, ... After generate Android
+        application based on YourBundle in destination folder :
+    <ul>
+        <li>Entity's and ContentProvider's based on YourBundle\Entity class.</li>
+        <li>Account based on FOSUser (YourBundle\Entity\User).</li>
+        <li>SyncService and SyncAdapter between Account and Provider's.</li>
+        <li>Base application generated contain some additional class:</li>
+    </ul>
+    Api class for authentication and communication with Api.
+    <ul>
+        <li>Authenticator system (include Account login activity and Account service).</li>
+        <li>Helper's for Account, Database and Entity</li>
+        <li>Various utilities class.</li>
+        <li>And a Constant class (root package) that containing features like DB version, API url, ...</li>
+    </ul>
+    </p>
 
-      <h3>Installation</h3>
-      <i>Android SDK must be installed and accessible globaly</i>
-      <p>And minimum stability</p>
-      <pre>...
+    <h3>Installation</h3>
+    <i>Android SDK must be installed and accessible globaly</i>
+    <p>And minimum stability</p>
+    <pre>...
 "minimum-stability": "dev"
 ...</pre>
-      <p>Add repository to your composer.json</p>
-      <pre>...
+    <p>Add repository to your composer.json</p>
+    <pre>...
 "repositories" : [{
     "type" : "vcs",
     "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
 }],
 ...</pre>
-      <p>Next install Bundle using <a href="https://getcomposer.org/doc/00-intro.md" target="_blank">composer</a></p>
-      <pre>php composer.phar require kolapsis/androidgenerator-bundle master-dev</pre>
+    <p>Next install Bundle using <a href="https://getcomposer.org/doc/00-intro.md" target="_blank">composer</a></p>
+    <pre>php composer.phar require kolapsis/androidgenerator-bundle master-dev</pre>
 
-      <h3>Usage</h3>
-      <p>
-        <ul>
-          <li>Create your FOSUser class and configure FOSUser</li>
-          <li>Create your's Entities in YourBundle\Entity with AndroidAnnotation</li>
-          <li>Create your API (with JWT Bearer Authorization) and configure firewall<br>
-          <small>
-              <a href="http://symfony.com/doc/current/bundles/FOSRestBundle">FOSRest Bundle</a> &amp;
-              <a href="https://github.com/lexik/LexikJWTAuthenticationBundle">Lexik/JWT Authentication Bundle</a> it's nice for this...</small></li>
-        </ul>
-        Generate your Android Application with:
-        <pre>php bin/console generate:android:app YourBundle</pre>
-      </p>
+    <h3>Usage</h3>
+    <p>
+    <ul>
+        <li>Create your FOSUser class and configure FOSUser</li>
+        <li>Create your's Entities in YourBundle\Entity with AndroidAnnotation</li>
+        <li>Create your API (with JWT Bearer Authorization) and configure firewall<br>
+            <small>
+                <a href="http://symfony.com/doc/current/bundles/FOSRestBundle">FOSRest Bundle</a> &amp;
+                <a href="https://github.com/lexik/LexikJWTAuthenticationBundle">Lexik/JWT Authentication Bundle</a> it's
+                nice for this...
+            </small>
+        </li>
+    </ul>
+    Generate your Android Application with:
+    <pre>php bin/console generate:android:app YourBundle</pre>
+    </p>
 
-      <h3>Documentation</h3>
-      <p>Read the <a href="install_and_configure.html">PHP-Doc</a> off Bundle</p>
+    <h3>Full Documentation</h3>
+    <ul>
+        <li><a href="install_and_configure.html">Installation &amp; configuration</a></li>
+        <li><a href="user_config.html">User configuration for API</a></li>
+        <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
+        <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+    </ul>
 
-      <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a href="https://github.com/btouchard">btouchard</a>.</span>
-      </footer>
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">AndroidGeneratorBundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
 
-    </section>
+</section>
 
-  
-  </body>
+
+</body>
 </html>

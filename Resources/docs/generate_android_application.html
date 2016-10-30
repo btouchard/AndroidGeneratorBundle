@@ -2,7 +2,7 @@
 <html lang="en-us">
 <head>
     <meta charset="UTF-8">
-    <title>Androidgeneratorbundle by btouchard</title>
+    <title>AndroidGeneratorBundle by Benjamin Touchard @ 2016</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -18,16 +18,21 @@
 </section>
 
 <section class="main-content">
-
+    <h3>Full Documentation</h3>
+    <ul>
+        <li><a href="install_and_configure.html">Installation &amp; configuration</a></li>
+        <li><a href="user_config.html">User configuration for API</a></li>
+        <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
+        <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+    </ul>
     <h1>Automate Android application step by step</h1>
 
-    <h2>Step 11) Generate Android application from your Bundle</h2>
-    <p>YES !<br>You are ready to generate an new Android application from your bundle definition !</p>
+    <h2>Step 9) Generate Android application from your Bundle</h2>
+    <h4>YES, you have done.</h4>
+    <p>Now you are ready to generate an new Android application from your bundle application.</p>
     <p>AndroidGeneratorBundle provide a console command to generate application.<br>
     <strong>php bin/console generate:android:app</strong></p>
-    <p>
-        You juste need to pass Bundle name as command argument, like this:
-    </p>
+    <p>You juste need to pass Bundle name as command argument, like this:</p>
     <pre>php bin/console generate:android:app AppBundle</pre>
     <p><i>See other options <a href="#">here</a></i></p>
     <p>The script start and prompt somme information like
@@ -67,11 +72,11 @@ Generate: Entity Product -> <span style="color: green">OK</span>
 
     <p><b>It's down, now you can open your Android application project with your preferred IDE, and compile it for Android.</b></p>
 
-    <!--<p>
-        <a href="generate_android_application.html">Go next step: Android application</a>
-    </p>-->
+
+    <p style="text-align: left">&lt; Previous <a href="entity_definition.html">Define your Entity in Symfony application</a></p>
+
     <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">AndroidGeneratorBundle</a> is maintained by <a
                 href="https://github.com/btouchard">btouchard</a>.</span>
     </footer>
 

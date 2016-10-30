@@ -2,7 +2,7 @@
 <html lang="en-us">
 <head>
     <meta charset="UTF-8">
-    <title>Androidgeneratorbundle by btouchard</title>
+    <title>AndroidGeneratorBundle by Benjamin Touchard @ 2016</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -18,23 +18,27 @@
 </section>
 
 <section class="main-content">
-
     <h1>Automate Android application step by step</h1>
+    <h3>Full Documentation</h3>
+    <ul>
+        <li><a href="install_and_configure.html">Installation &amp; configuration</a></li>
+        <li><a href="user_config.html">User configuration for API</a></li>
+        <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
+        <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+    </ul>
 
-    <h2>Step 7) FOSUser configuration</h2>
-    <p>Now, you must be create the User Entity class defined in configuration for FOSUser<br>
+    <h2>Step 5) FOSUser configuration</h2>
+    <p>Now, you must be create the User Entity class defined in FOSUser configuration part.<br>
     Example: AppBundle/Entity/User.php</p>
     <pre>&lt;?php
-
 namespace AppBundle\Entity;
 
-use FOS\UserBundle\Model\User as BaseUser;
 use Doctrine\ORM\Mapping as ORM;
-use JMS\Serializer\Annotation as Serializer;
+<b>use FOS\UserBundle\Model\User as BaseUser;
+use JMS\Serializer\Annotation as Serializer;</b>
 
 /**
  * User
- *
  * @ORM\Entity
  * @ORM\Table(name="user")
  */
@@ -46,56 +50,46 @@ class User extends BaseUser {
 
     /**
      * @var integer
-     *
      * @ORM\Id
      * @ORM\Column(name="id", type="integer")
      * @ORM\GeneratedValue(strategy="AUTO")
-     *
-     * @Serializer\Expose()
+     * <b>@Serializer\Expose()</b>
      */
     protected $id;
 
     /**
      * @var string
-     *
      * @ORM\Column(name="firstname", type="string", length=255, nullable=true)
-     *
-     * @Serializer\Expose()
-     * @Serializer\Groups({"Me"})
+     * <b>@Serializer\Expose()
+     * @Serializer\Groups({"Me"})</b>
      */
     protected $firstname;
 
     /**
      * @var string
-     *
      * @ORM\Column(name="lastname", type="string", length=255, nullable=true)
-     *
-     * @Serializer\Expose()
-     * @Serializer\Groups({"Me"})
+     * <b>@Serializer\Expose()
+     * @Serializer\Groups({"Me"})</b>
      */
     protected $lastname;
 
     /**
      * @var string
-     *
      * @ORM\Column(name="city", type="string", length=255, nullable=true)
-     *
-     * @Serializer\Expose()
+     * <b>@Serializer\Expose()</b>
      */
     protected $city;
 
     /**
      * @var string
-     *
      * @ORM\Column(name="country", type="string", length=255, nullable=true)
-     *
-     * @Serializer\Expose()
+     * <b>@Serializer\Expose()</b>
      */
     protected $country;
 }
 </pre>
-    <p>Next create serialization model JMSSerializer<br>
-    Create file Resources/serialize/Model.User.yml, and put:</p>
+    <p>Next create serialization model for JMSSerializer<br>
+    Create file <b>Resources/serialize/Model.User.yml</b>, and put this for exposing data from FOSUserModel base class</p>
     <pre>FOS\UserBundle\Model\User:
     exclusion_policy: ALL
     properties:
@@ -114,19 +108,19 @@ class User extends BaseUser {
 php bin/console doctrine:schema:update --force
 php bin/console cache:clear</pre>
 
-    <h2>Step 8) Test your api</h2>
-    <p>And create a new user:</p>
+    <h2>Step 6) Test your api</h2>
+    <p>Create a new user in application:</p>
     <pre>php bin/console fos:user:create ben</pre>
     <p>And check login to API:</p>
     <pre>curl -X POST http://<i>api.url</i>/api/login  -d username=ben -d password=ben</pre>
     <p>You must be see a response containing JSON token like this:</p>
     <pre>{"token":"eyJhbGciOiJSUzI1NiJ9<i>...</i>"}</pre>
 
-    <p>
-        <a href="entity_definition.html">Go next step: ApiController and Entity definition</a>
-    </p>
+    <p style="text-align: right">&gt; Next <a href="entity_definition.html">Define your Entity in Symfony application</a></p>
+    <p style="text-align: left">&lt; Previous <a href="install_and_configure.html">Installation &amp; configuration</a></p>
+
     <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">AndroidGeneratorBundle</a> is maintained by <a
                 href="https://github.com/btouchard">btouchard</a>.</span>
     </footer>
 
