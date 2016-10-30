@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="UTF-8">
+    <title>Androidgeneratorbundle by btouchard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">Symfony Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
+</section>
+
+<section class="main-content">
+
+    <h1>Automate Android application step by step</h1>
+
+    <h2>Step 7) FOSUser configuration</h2>
+    <p>Now, you must be create the User Entity class defined in configuration for FOSUser<br>
+    Example: AppBundle/Entity/User.php</p>
+    <pre>&lt;?php
+
+namespace AppBundle\Entity;
+
+use FOS\UserBundle\Model\User as BaseUser;
+use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation as Serializer;
+
+/**
+ * User
+ *
+ * @ORM\Entity
+ * @ORM\Table(name="user")
+ */
+class User extends BaseUser {
+
+    const ROLE_SUPER_ADMIN = 'ROLE_SUPER_ADMIN';
+    const ROLE_ADMIN = 'ROLE_ADMIN';
+    const ROLE_USER = 'ROLE_USER';
+
+    /**
+     * @var integer
+     *
+     * @ORM\Id
+     * @ORM\Column(name="id", type="integer")
+     * @ORM\GeneratedValue(strategy="AUTO")
+     *
+     * @Serializer\Expose()
+     */
+    protected $id;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="firstname", type="string", length=255, nullable=true)
+     *
+     * @Serializer\Expose()
+     * @Serializer\Groups({"Me"})
+     */
+    protected $firstname;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="lastname", type="string", length=255, nullable=true)
+     *
+     * @Serializer\Expose()
+     * @Serializer\Groups({"Me"})
+     */
+    protected $lastname;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="city", type="string", length=255, nullable=true)
+     *
+     * @Serializer\Expose()
+     */
+    protected $city;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="country", type="string", length=255, nullable=true)
+     *
+     * @Serializer\Expose()
+     */
+    protected $country;
+}
+</pre>
+    <p>Next create serialization model JMSSerializer<br>
+    Create file Resources/serialize/Model.User.yml, and put:</p>
+    <pre>FOS\UserBundle\Model\User:
+    exclusion_policy: ALL
+    properties:
+        username:
+            expose: true
+        salt:
+            expose: true
+            groups: [Details]
+        email:
+            expose: true
+            groups: [Me]
+        enabled:
+            expose: true</pre>
+    <p>Now, update database:</p>
+    <pre>php bin/console doctrine:generate:entities AppBundle
+php bin/console doctrine:schema:update --force
+php bin/console cache:clear</pre>
+
+    <h2>Step 8) Test your api</h2>
+    <p>And create a new user:</p>
+    <pre>php bin/console fos:user:create ben</pre>
+    <p>And check login to API:</p>
+    <pre>curl -X POST http://<i>api.url</i>/api/login  -d username=ben -d password=ben</pre>
+    <p>You must be see a response containing JSON token like this:</p>
+    <pre>{"token":"eyJhbGciOiJSUzI1NiJ9<i>...</i>"}</pre>
+
+    <p>
+        <a href="entity_definition.html">Go next step: ApiController and Entity definition</a>
+    </p>
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
+
+</section>
+
+
+</body>
+</html>

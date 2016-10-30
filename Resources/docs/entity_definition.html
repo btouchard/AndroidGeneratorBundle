@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="UTF-8">
+    <title>Androidgeneratorbundle by btouchard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">Symfony Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
+</section>
+
+<section class="main-content">
+
+    <h1>Automate Android application step by step</h1>
+
+    <h2>Step 9) Add API controller and routing</h2>
+    <p>Now, all configuration is done.</p>
+    <p>
+        AndroidGeneratorBundle provide a ApiController that can by extends on your Bundle.<br>
+        This Controller provide automatically all routes to expose yours Entities defined in your Bundle.<br>
+        You can simply create a Controller in your Bundle that extends Kolapsis\Bundle\AndroidGeneratorBundle\Controller\ApiController like this:
+    </p>
+    <pre>&lt;?php
+namespace AppBundle\Controller;
+
+use FOS\RestBundle\Controller\Annotations\Route;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Controller\ApiController;
+
+/**
+ * Class AppController
+ * @package AppBundle\Controller
+ * @Route("/api")
+ */
+class AppController extends ApiController {
+
+}</pre>
+    <p>And next adding this controller to <b>routing.yml</b></p>
+    <pre>api:
+    prefix:   /api
+    resource: AppBundle\Controller\AppController
+    type:     annotation</pre>
+
+    <h2>Step 10) Create your custom Entity</h2>
+    <p>Now, all configuration is done.<br>
+    You must be create your's entities.<br>
+    All is done as a usual, you just need to add some annotations to the class definition for generator application.</p>
+    <h3>Example with Products & Categories :</h3>
+    <p>First i need to create Category entity:</p>
+    <pre>php bin/console doctrine:generate:entity --no-interaction --entity=AppBundle:Category --fields="label:string(100)" --format=annotation</pre>
+    <p>Edit Category class and add annotation for Android Generator and JMSSerialzer:</p>
+    <pre>&lt;?php
+namespace AppBundle\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+<b>use JMS\Serializer\Annotation as Serializer;</b>
+<b>use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation as Android;</b>
+
+/**
+ * Category
+ * <b>@Android\Entity("Category", providerName="Product")</b>
+ * <b>@Android\ApiPath("category")</b>
+ * @ORM\Table(name="category")
+ * @ORM\Entity(repositoryClass="AppBundle\Repository\CategoryRepository")
+ */
+class Category {
+    /**
+     * @var int
+     * @ORM\Column(name="id", type="integer")
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="AUTO")
+     * <b>@Serializer\Expose()</b>
+     */
+    private $id;
+
+    /**
+     * @var string
+     * @ORM\Column(name="label", type="string", length=100)
+     * <b>@Serializer\Expose()</b>
+     */
+    private $label;
+
+    /**
+     * @ORM\OneToMany(targetEntity="AppBundle\Entity\Product", mappedBy="category")
+     * <p>@Serializer\Exclude()</p>
+     */
+    private $products;</pre>
+    <p>Next create a Product entity</p>
+    <pre>php bin/console doctrine:generate:entity --no-interaction --entity=AppBundle:Product --fields="label:string(100) category:int price:float" --format=annotation</pre>
+    <p>And update class</p>
+    <pre>&lt;?php
+namespace AppBundle\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+<b>use JMS\Serializer\Annotation as Serializer;</b>
+<b>use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation as Android;</b>
+
+/**
+ * Product
+ * <b>@Android\Entity("Product", providerName="Product")</b>
+ * <b>@Android\ApiPath("products")</b>
+ * @ORM\Table(name="product")
+ * @ORM\Entity(repositoryClass="AppBundle\Repository\ProductRepository")
+ */
+class Product
+{
+    /**
+     * @var int
+     * @ORM\Column(name="id", type="integer")
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="AUTO")
+     * <b>@Serializer\Expose()</b>
+     */
+    private $id;
+
+    /**
+     * @var string
+     * @ORM\Column(name="label", type="string", length=100)
+     * <b>@Serializer\Expose()</b>
+     */
+    private $label;
+
+    /**
+     * @var AppBundle\Entity\Category
+     * @ORM\ManyToOne(targetEntity="AppBundle\Entity\Category")
+     * @ORM\JoinColumn(name="category_id", referencedColumnName="id")
+     * <b>@Serializer\Exclude()</b>
+     */
+    private $category;
+
+    <b>/**
+     * Virtual property for relationship, could not load category info, just ID for relationship
+     * @var int
+     * @Serializer\VirtualProperty()
+     * @Serializer\SerializedName("category_id")
+     * @return int
+     */
+    public function getCategoryId() {
+        return $this->category->getId();
+    }</b>
+
+    /**
+     * @var float
+     * @ORM\Column(name="price", type="float")
+     * <b>@Serializer\Expose()</b>
+     */
+    private $price;
+    </pre>
+    <p>Next regenerate Entities and update database</p>
+    <pre>php bin/console doctrine:generate:entities AppBundle
+php bin/console doctrine:schema:update --force</pre>
+
+    <p>Now insert some data on your database. With doctrine:fixtures for example...</p>
+    <pre>&lt;?php
+namespace AppBundle\DataFixtures\ORM;
+
+use AppBundle\Entity\Category;
+use AppBundle\Entity\Product;
+use Doctrine\Common\DataFixtures\FixtureInterface;
+use Doctrine\Common\Persistence\ObjectManager;
+use FOS\UserBundle\Doctrine\UserManager;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+
+class LoadData implements FixtureInterface, ContainerAwareInterface  {
+    private $container;
+    public function setContainer(ContainerInterface $container=null) {
+        $this->container = $container;
+    }
+    public function load(ObjectManager $manager) {
+        $this->setupUser($this->container->get('fos_user.user_manager'));
+        for ($i=1; $i<=10; $i++) {
+            $category = new Category();
+            $category->setLabel("Category #$i");
+            $manager->persist($category);
+            for ($j=1; $j<=10; $j++) {
+                $product = new Product();
+                $product->setLabel("Product #$j");
+                $product->setCategory($category);
+                $product->setPrice(rand(1000, 10000)/100);
+                $manager->persist($product);
+            }
+            $manager->flush();
+        }
+    }
+    private function setupUser(UserManager $um) {
+        $user = $um->createUser();
+        $user->setFirstname('Benjamin');
+        $user->setLastname('Touchard');
+        $user->setCity('Bordeaux');
+        $user->setCountry('France');
+        $user->setUsername('ben');
+        $user->setEmail('benjamin@kolapsis.com');
+        $user->setPlainPassword('ben');
+        $user->setEnabled(true);
+        $user->setRoles(['ROLE_USER']);
+        $um->updateUser($user, true);
+    }
+}</pre>
+    <pre>php bin/console doctrine:fixtures:load</pre>
+    <p>And after check the API, you can access to Entity from her path defined on ApiPath annotation</p>
+    <pre>curl -X GET http://<i>api.url</i>/api/products -H "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9[...]"</pre>
+
+    <p>
+        <a href="generate_android_application.html">Go next step: Android application</a>
+    </p>
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
+
+</section>
+
+
+</body>
+</html>

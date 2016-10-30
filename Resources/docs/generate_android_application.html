@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="UTF-8">
+    <title>Androidgeneratorbundle by btouchard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">Symfony Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
+</section>
+
+<section class="main-content">
+
+    <h1>Automate Android application step by step</h1>
+
+    <h2>Step 11) Generate Android application from your Bundle</h2>
+    <p>YES !<br>You are ready to generate an new Android application from your bundle definition !</p>
+    <p>AndroidGeneratorBundle provide a console command to generate application.<br>
+    <strong>php bin/console generate:android:app</strong></p>
+    <p>
+        You juste need to pass Bundle name as command argument, like this:
+    </p>
+    <pre>php bin/console generate:android:app AppBundle</pre>
+    <p><i>See other options <a href="#">here</a></i></p>
+    <p>The script start and prompt somme information like
+    <ul>
+        <li><b>App name: </b> Android application name</li>
+        <li><b>App path: </b> Where is stored application</li>
+        <li><b>App domain name: </b> DNS associate to the application (used two for package name)</li>
+        <li><b>App API url: </b> URL of previously created API</li>
+    </ul>
+    </p>
+    <pre>==================================
+Android App Generator
+==================================
+<span style="color: green">Android API: 24 (min: 21)
+Android SDK path: /opt/android-sdk
+Gradle: 2.2.0</span>
+
+Please enter the <span style="color: green">App name</span> [AndroidGenDemo]:
+Please enter the <span style="color: green">App path</span> [/home/benjamin/Documents/workspace/AndroidGenDemo]:
+Please enter the <span style="color: green">App domain name</span> [kolapsis.com]:
+Please enter the <span style="color: green">App API url</span> [http://192.168.0.XX/AndroidGenDemo/web/api]:
+==================================
+
+Generating App: "AndroidGenDemo" [package: com.kolapsis.androidgendemo]
+==================================
+
+Parsing: AppBundle -> <span style="color: green">OK</span>
+Setting up project configuration -> <span style="color: green">OK</span>
+Preparing Android application base -> <span style="color: green">OK</span>
+Generate: ProductProvider -> <span style="color: green">OK</span>
+Generate: ProductSyncService -> <span style="color: green">OK</span>
+Generate: ProductSyncAdapter -> <span style="color: green">OK</span>
+Generate: Entity Category -> <span style="color: green">OK</span>
+Generate: Entity Product -> <span style="color: green">OK</span>
+
+<span style="color: orange">Finished !</span></pre>
+
+    <p><b>It's down, now you can open your Android application project with your preferred IDE, and compile it for Android.</b></p>
+
+    <!--<p>
+        <a href="generate_android_application.html">Go next step: Android application</a>
+    </p>-->
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
+
+</section>
+
+
+</body>
+</html>

@@ -89,7 +89,7 @@ class BundleParser {
             $reflectionClass = new \ReflectionClass($meta->getName());
             $reader = new AnnotationReader();
             $annotation = $reader->getClassAnnotation($reflectionClass, Entity::class);
-            if (!$annotation->ignoredClass) {
+            if (!empty($annotation) && !$annotation->ignoredClass) {
                 if (empty($annotation->tableName)) {
                     $table = $reader->getClassAnnotation($reflectionClass, Table::class);
                     if ($table != null && !empty($table->name)) $annotation->tableName = $table->name;

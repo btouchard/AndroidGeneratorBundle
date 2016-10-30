@@ -1,360 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
-    <meta charset="utf-8"/>
-    <title>API Documentation</title>
-    <meta name="author" content=""/>
-    <meta name="description" content=""/>
-
-    <link href="css/bootstrap-combined.no-icons.min.css" rel="stylesheet">
-    <link href="css/font-awesome.min.css" rel="stylesheet">
-    <link href="css/prism.css" rel="stylesheet" media="all"/>
-    <link href="css/template.css" rel="stylesheet" media="all"/>
-    
-    <!--[if lt IE 9]>
-    <script src="js/html5.js"></script>
-    <![endif]-->
-    <script src="js/jquery-1.11.0.min.js"></script>
-    <script src="js/ui/1.10.4/jquery-ui.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/jquery.smooth-scroll.js"></script>
-    <script src="js/prism.min.js"></script>
-    <!-- TODO: Add http://jscrollpane.kelvinluck.com/ to style the scrollbars for browsers not using webkit-->
-    
-    <link rel="shortcut icon" href="images/favicon.ico"/>
-    <link rel="apple-touch-icon" href="images/apple-touch-icon.png"/>
-    <link rel="apple-touch-icon" sizes="72x72" href="images/apple-touch-icon-72x72.png"/>
-    <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touch-icon-114x114.png"/>
-</head>
-<body>
-
-<div class="navbar navbar-fixed-top">
-    <div class="navbar-inner">
-        <div class="container">
-            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                <i class="icon-ellipsis-vertical"></i>
-            </a>
-            <a class="brand" href="index.html">API Documentation</a>
-
-            <div class="nav-collapse">
-                <ul class="nav pull-right">
-                                        <li class="dropdown">
-                        <a href="index.html" class="dropdown-toggle" data-toggle="dropdown">
-                            API Documentation <b class="caret"></b>
-                        </a>
-                        <ul class="dropdown-menu">
-                                                        <li><a href="namespaces/Kolapsis.html">\Kolapsis</a></li>
-                                                    </ul>
-                    </li>
-                                        <li class="dropdown" id="charts-menu">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            Charts <b class="caret"></b>
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a href="graphs/class.html">
-                                    <i class="icon-list-alt"></i>&#160;Class hierarchy diagram
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="dropdown" id="reports-menu">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            Reports <b class="caret"></b>
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a href="reports/errors.html">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <i class="icon-list-alt"></i>&#160;Errors <span class="label label-info pull-right">0</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="reports/markers.html">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <i class="icon-list-alt"></i>&#160;Markers <span class="label label-info pull-right">0</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="reports/deprecated.html">
-                                                                                                            <i class="icon-list-alt"></i>&#160;Deprecated <span class="label label-info pull-right">0</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <!--<div class="go_to_top">-->
-    <!--<a href="#___" style="color: inherit">Back to top&#160;&#160;<i class="icon-upload icon-white"></i></a>-->
-    <!--</div>-->
-</div>
-
-<div id="___" class="container-fluid">
-        <section class="row-fluid">
-        <div class="span2 sidebar">
-                                <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle " data-toggle="collapse" data-target="#namespace-1157622624"></a>
-                                <a href="namespaces/default.html" style="margin-left: 30px; padding-left: 0">\</a>
-            </div>
-            <div id="namespace-1157622624" class="accordion-body collapse in">
-                <div class="accordion-inner">
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-327187878"></a>
-                                <a href="namespaces/Kolapsis.html" style="margin-left: 30px; padding-left: 0">Kolapsis</a>
-            </div>
-            <div id="namespace-327187878" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-295191773"></a>
-                                <a href="namespaces/Kolapsis.Bundle.html" style="margin-left: 30px; padding-left: 0">Bundle</a>
-            </div>
-            <div id="namespace-295191773" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-1894441833"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.html" style="margin-left: 30px; padding-left: 0">AndroidGeneratorBundle</a>
-            </div>
-            <div id="namespace-1894441833" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-1526149043"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Annotation.html" style="margin-left: 30px; padding-left: 0">Annotation</a>
-            </div>
-            <div id="namespace-1526149043" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Annotation.ApiPath.html">ApiPath</a></li>
-                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Annotation.Entity.html">Entity</a></li>
-                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Annotation.EntityFile.html">EntityFile</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-1696373051"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Command.html" style="margin-left: 30px; padding-left: 0">Command</a>
-            </div>
-            <div id="namespace-1696373051" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Command.AndroidAppCommand.html">AndroidAppCommand</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-809311262"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Controller.html" style="margin-left: 30px; padding-left: 0">Controller</a>
-            </div>
-            <div id="namespace-809311262" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Controller.ApiController.html">ApiController</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-1589637966"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Exception.html" style="margin-left: 30px; padding-left: 0">Exception</a>
-            </div>
-            <div id="namespace-1589637966" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Exception.GeneratorException.html">GeneratorException</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-1650193150"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Generator.html" style="margin-left: 30px; padding-left: 0">Generator</a>
-            </div>
-            <div id="namespace-1650193150" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Generator.EntityGenerator.html">EntityGenerator</a></li>
-                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Generator.FileGenerator.html">FileGenerator</a></li>
-                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Generator.Generator.html">Generator</a></li>
-                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Generator.GradleGenerator.html">GradleGenerator</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                                                    <div class="accordion" style="margin-bottom: 0">
-        <div class="accordion-group">
-            <div class="accordion-heading">
-                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#namespace-340694419"></a>
-                                <a href="namespaces/Kolapsis.Bundle.AndroidGeneratorBundle.Parser.html" style="margin-left: 30px; padding-left: 0">Parser</a>
-            </div>
-            <div id="namespace-340694419" class="accordion-body collapse ">
-                <div class="accordion-inner">
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.Parser.BundleParser.html">BundleParser</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                    
-                    <ul>
-                                                                                                    <li class="class"><a href="classes/Kolapsis.Bundle.AndroidGeneratorBundle.AndroidGeneratorBundle.html">AndroidGeneratorBundle</a></li>
-                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                    
-                    <ul>
-                                                                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                    
-                    <ul>
-                                                                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-                    
-                    <ul>
-                                                                                            </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-        </div>
-    </section>
-    <section class="row-fluid">
-        <div class="span10 offset2">
-            <div class="row-fluid">
-                <div class="span8 content namespace">
-                    <nav>
-                                                
-                                            </nav>
-                    <h1><small></small>\</h1>
-
-                                        <h2>Namespaces</h2>
-                    <table class="table table-hover">
-                                                    <tr>
-                                <td><a href="namespaces/Kolapsis.html">Kolapsis</a></td>
-                            </tr>
-                                            </table>
-                    
-                    
-                    
-                                    </div>
-
-                <aside class="span4 detailsbar">
-                    <dl>
-                        <dt>Namespace hierarchy</dt>
-                        <dd class="hierarchy">
-                                                                                                                                                <div class="namespace-wrapper">\</div>
-                        </dd>
-                    </dl>
-                </aside>
-            </div>
-
-            
-            
-        </div>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Androidgeneratorbundle by btouchard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Symfony Android Generator Bundle</h1>
+      <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
     </section>
 
-    <footer class="row-fluid">
-        <section class="span10 offset2">
-            <section class="row-fluid">
-                <section class="span10 offset1">
-                    <section class="row-fluid footer-sections">
-                        <section class="span4">
-                                                        <h1><i class="icon-code"></i></h1>
-                            <div>
-                                <ul>
-                                                                            <li><a href="namespaces/Kolapsis.html">\Kolapsis</a></li>
-                                                                    </ul>
-                            </div>
-                        </section>
-                        <section class="span4">
-                                                        <h1><i class="icon-bar-chart"></i></h1>
-                            <div>
-                                <ul>
-                                    <li><a href="graphs/class.html">Class Hierarchy Diagram</a></li>
-                                </ul>
-                            </div>
-                        </section>
-                        <section class="span4">
-                                                        <h1><i class="icon-pushpin"></i></h1>
-                            <div>
-                                <ul>
-                                    <li><a href="reports/errors.html">Errors</a></li>
-                                    <li><a href="reports/markers.html">Markers</a></li>
-                                </ul>
-                            </div>
-                        </section>
-                    </section>
-                </section>
-            </section>
-            <section class="row-fluid">
-                <section class="span10 offset1">
-                    <hr />
-                    Documentation is powered by <a href="http://www.phpdoc.org/">phpDocumentor </a> and authored
-                    on October 26th, 2016 at 22:47.
-                </section>
-            </section>
-        </section>
-    </footer>
-</div>
+    <section class="main-content">
+      <h3>Welcome to AndroidGeneratorBundle.</h3>
+      <p>This bundle provides a command to generate Android application and needed RESTApi based on your bundle definition.</p>
 
-</body>
+      <h3>How it works</h3>
+      <p>
+        A generator prompt some information: AppName, package, destination folder, ... After generate Android application based on YourBundle in destination folder :
+        <ul>
+          <li>Entity's and ContentProvider's based on YourBundle\Entity class.</li>
+          <li>Account based on FOSUser (YourBundle\Entity\User).</li>
+          <li>SyncService and SyncAdapter between Account and Provider's.</li>
+          <li>Base application generated contain some additional class:</li>
+        </ul>
+        Api class for authentication and communication with Api.
+        <ul>
+          <li>Authenticator system (include Account login activity and Account service).</li>
+          <li>Helper's for Account, Database and Entity</li>
+          <li>Various utilities class.</li>
+          <li>And a Constant class (root package) that containing features like DB version, API url, ...</li>
+        </ul>
+      </p>
+
+      <h3>Installation</h3>
+      <i>Android SDK must be installed and accessible globaly</i>
+      <p>And minimum stability</p>
+      <pre>...
+"minimum-stability": "dev"
+...</pre>
+      <p>Add repository to your composer.json</p>
+      <pre>...
+"repositories" : [{
+    "type" : "vcs",
+    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
+}],
+...</pre>
+      <p>Next install Bundle using <a href="https://getcomposer.org/doc/00-intro.md" target="_blank">composer</a></p>
+      <pre>php composer.phar require kolapsis/androidgenerator-bundle master-dev</pre>
+
+      <h3>Usage</h3>
+      <p>
+        <ul>
+          <li>Create your FOSUser class and configure FOSUser</li>
+          <li>Create your's Entities in YourBundle\Entity with AndroidAnnotation</li>
+          <li>Create your API (with JWT Bearer Authorization) and configure firewall<br>
+          <small>
+              <a href="http://symfony.com/doc/current/bundles/FOSRestBundle">FOSRest Bundle</a> &amp;
+              <a href="https://github.com/lexik/LexikJWTAuthenticationBundle">Lexik/JWT Authentication Bundle</a> it's nice for this...</small></li>
+        </ul>
+        Generate your Android Application with:
+        <pre>php bin/console generate:android:app YourBundle</pre>
+      </p>
+
+      <h3>Documentation</h3>
+      <p>Read the <a href="install_and_configure.html">PHP-Doc</a> off Bundle</p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a href="https://github.com/btouchard">btouchard</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
 </html>

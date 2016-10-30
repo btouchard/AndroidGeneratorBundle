@@ -6,11 +6,8 @@
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
 
-use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\Mapping\ClassMetadata;
-use Doctrine\ORM\Mapping\Table;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\EntityFile;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Exception\GeneratorException;

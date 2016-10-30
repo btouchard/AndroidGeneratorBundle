@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="UTF-8">
+    <title>Androidgeneratorbundle by btouchard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">Symfony Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
+</section>
+
+<section class="main-content">
+
+    <h1>Automate Android application step by step</h1>
+
+    <h2>Step 1) Create your application and install needed dependencies</h2>
+    <pre>symfony new AndroidGenDemo</pre>
+    <p>And minimum stability</p>
+    <pre>...
+"minimum-stability": "dev"
+...</pre>
+    <p>Add repository</p>
+    <pre>...
+"repositories" : [{
+    "type" : "vcs",
+    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
+}],
+...</pre>
+    <p>to your <b>composer.json</b></p>
+    <p>Next, you must be install bundle:</p>
+    <pre>composer require kolapsis/androidgenerator-bundle master-dev</pre>
+
+    <h2>Step 2) Configure application</h2>
+    <p>Now it's time to enabled bundle's and configure it</p>
+
+    <h4>Enable all needed bundle's in your <b>AppKernel.php</b></h4>
+    <pre>$bundles = [
+    new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
+    new Symfony\Bundle\SecurityBundle\SecurityBundle(),
+    new Symfony\Bundle\TwigBundle\TwigBundle(),
+    new Symfony\Bundle\MonologBundle\MonologBundle(),
+    new Symfony\Bundle\SwiftmailerBundle\SwiftmailerBundle(),
+    new Doctrine\Bundle\DoctrineBundle\DoctrineBundle(),
+    new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
+    <b>new FOS\UserBundle\FOSUserBundle(),
+    new JMS\SerializerBundle\JMSSerializerBundle(),</b>
+    <i>new FOS\RestBundle\FOSRestBundle(),
+    new Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle(),</i>
+    <b>new Kolapsis\Bundle\AndroidGeneratorBundle\AndroidGeneratorBundle(),</b>
+    new AppBundle\AppBundle(),
+];</pre>
+    <p>
+        <b>Bold: Needed Bundle's</b>
+        <i>Italic: Optional</i>
+    </p>
+
+    <h4>Update your <b>config.yml</b></h4>
+    <pre># <b>FOSUser Configuration</b>
+fos_user:
+    db_driver: orm
+    firewall_name: main
+    user_class: AppBundle\Entity\User</pre>
+    <p>AppBundle\Entity\User must be created later.</p>
+    <pre># <b>JMSSerializer Configuration</b>
+jms_serializer:
+    metadata:
+        directories:
+            FOSUB:
+                namespace_prefix: "FOS\\UserBundle"
+                path: "@AppBundle/Resources/serializer"</pre>
+    <p>Model.User.yml representing User class serialization must be created later in this directory.</p>
+    <pre># <b>FOSRest Configuration</b>
+fos_rest:
+    param_fetcher_listener: true
+    body_listener: true
+    format_listener:
+        rules:
+            - { path: '^/api', fallback_format: json}
+    view:
+        view_response_listener: 'force'
+        formats:
+            xml: true
+            json : true
+        templating_formats:
+            html: true
+        force_redirects:
+            html: true
+        failed_validation: HTTP_BAD_REQUEST
+        default_engine: twig
+    routing_loader:
+        default_format: json
+        include_format: false</pre>
+    <p>
+        This lines configure FOSRestBundle
+        <ul>
+            <li>all api routes start with /api</li>
+            <li>api capture request as JSON and respond as JSON</li>
+        </ul>
+    </p>
+    <pre># <b>Lexik JWT Configuration</b>
+lexik_jwt_authentication:
+    private_key_path: %jwt_private_key_path%
+    public_key_path:  %jwt_public_key_path%
+    pass_phrase:      %jwt_key_pass_phrase%
+    token_ttl:        %jwt_token_ttl%</pre>
+    <p>Configure JWT (JSON Web Token) with ssl key's</p>
+
+    <h2>Step 3) Configure JWT Security</h2>
+    <p>Generate SSL keys</p>
+    <pre>$ mkdir -p var/jwt # For Symfony3+, no need of the -p option
+$ openssl genrsa -out var/jwt/private.pem -aes256 4096
+$ openssl rsa -pubout -in var/jwt/private.pem -out var/jwt/public.pem</pre>
+    <p>Setup <b>parameters.yml</b></p>
+    <pre>parameters:
+    ...
+    jwt_private_key_path: %kernel.root_dir%/../var/jwt/private.pem   # ssh private key path
+    jwt_public_key_path:  %kernel.root_dir%/../var/jwt/public.pem    # ssh public key path
+    jwt_key_pass_phrase:  <i>yourkeypassphrase</i>                          # ssh key pass phrase
+    jwt_token_ttl:        3600</pre>
+
+    <h2>Step 4) Configure Firewall Security</h2>
+    <pre>security:
+    encoders:
+        FOS\UserBundle\Model\UserInterface: sha512
+
+    role_hierarchy:
+        ROLE_ADMIN:       ROLE_USER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
+    providers:
+        fos_userbundle:
+            id: fos_user.user_provider.username
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        # RESTFULL API LOGIN
+        login:
+            # API Authentication login URL
+            pattern:  ^/api/login
+            stateless: true
+            anonymous: true
+            form_login:
+                # API Authentication login route
+                check_path:         /api/login
+                # Login field name
+                username_parameter: username
+                # Password field name
+                password_parameter: password
+                success_handler:    lexik_jwt_authentication.handler.authentication_success
+                failure_handler:    lexik_jwt_authentication.handler.authentication_failure
+                require_previous_session: false
+
+        # RESTFULL API
+        api:
+            # API path
+            pattern:   ^/api
+            stateless: true
+            anonymous: true
+            guard:
+                authenticators:
+                    - lexik_jwt_authentication.jwt_token_authenticator
+
+        main:
+            pattern: ^/
+            form_login:
+                provider: fos_userbundle
+                csrf_token_generator: security.csrf.token_manager
+            logout:       true
+            anonymous:    true
+
+    access_control:
+        # You can leave access to unsecured path (api entity) like this
+        # - { path: <i>^/api/unsecured_path</i>,role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api/login,  role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api,        role: IS_AUTHENTICATED_FULLY }
+
+        - { path: ^/login$,     role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/register,   role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/resetting,  role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/me,         role: IS_AUTHENTICATED_FULLY }</pre>
+
+    <h2>Step 5) Configure login route</h2>
+    <p>Edit your <b>routing.yml</b> to add this lines on top:</p>
+    <pre>api_login:
+    path: /api/login</pre>
+
+    <h2>Step 6) Configure doctrine and create database</h2>
+    <p>Edit your <b>parameters.yml</b> and setup your database connexion.</p>
+    <p>And next create database:</p>
+    <pre>php bin/console doctrine:database:create</pre>
+
+    <p>
+        <a href="user_config.html">Go next step: FOSUser</a>
+    </p>
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">Androidgeneratorbundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
+
+</section>
+
+
+</body>
+</html>

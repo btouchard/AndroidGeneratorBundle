@@ -60,6 +60,16 @@ class ApiController extends Controller implements ContainerAwareInterface {
     }
 
     /**
+     * Return all users
+     * @Route("/users", methods={"GET"}, name="api_users")
+     * @View(serializerGroups={"Default"})
+     * @return mixed
+     */
+    public function getUsersAction(){
+        return $this->getDoctrine()->getRepository('AppBundle:User')->findAll();
+    }
+
+    /**
      * Return current user if authenticated (use by Android App to check token)
      * @Route("/me", methods={"GET"}, name="api_me")
      * @View(serializerGroups={"Default","Me", "Details"})
