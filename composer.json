@@ -1,18 +1,11 @@
 {
   "name" : "kolapsis/androidgenerator-bundle",
-  "minimum-stability": "dev",
-  "description" : "Android Generator Bundle",
+  "description" : "This bundle provides Android application generator based on your project.\nResulting Android application contain account, contentprovider, sync service and adapter for perfect Android integration",
   "type" : "symfony-bundle",
-  "authors" : [{
-    "name" : "Benjamin Touchard",
-    "email" : "benjamin@kolapsis.com"
-  }],
-  "keywords" : [
-    "Android", "Generator", "Rest API"
-  ],
-  "license" : [
-    "MIT"
-  ],
+  "authors" : [{ "name" : "Benjamin Touchard", "email" : "benjamin@kolapsis.com" }],
+  "keywords" : [ "Android", "Generator", "Rest API" ],
+  "homepage": "https://btouchard.github.io/AndroidGeneratorBundle",
+  "license" : [ "MIT" ],
   "require" : {
     "php": ">=5.5.9",
     "symfony/framework-bundle": "~2.3|~3.0",
@@ -24,18 +17,18 @@
     "friendsofsymfony/user-bundle": "^2.0@dev",
     "jms/serializer-bundle": "^1.1"
   },
-  "autoload" : {
-    "psr-4" : {
-      "Kolapsis\\Bundle\\AndroidGeneratorBundle\\" : ""
-    }
+  "suggest": {
+    "friendsofsymfony/rest-bundle": "FOSRestBundle provides several tools to assist in building REST applications",
+    "lexik/jwt-authentication-bundle": "Lexit JWTauthenticationBundle provides JWT authentication for your Symfony REST API"
   },
-  "repositories" : [{
-    "type" : "vcs",
-    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
-  }],
+  "autoload" : {
+    "psr-4" : { "Kolapsis\\Bundle\\AndroidGeneratorBundle\\" : "" },
+    "exclude-from-classmap": [ "/Tests/" ]
+  },
+  "minimum-stability": "dev",
   "extra" : {
     "branch-alias" : {
-      "dev-master" : "master-dev"
+      "dev-master" : "1.0-dev"
     }
   }
 }
