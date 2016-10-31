@@ -192,7 +192,7 @@ final class AndroidAppCommand extends ContainerAwareCommand {
             $this->output->writeln(' -> <info>OK</info>');
         }
 
-        $entityGenerator = new EntityGenerator($this->twig, $this->output, $packageName, $path);
+        $entityGenerator = new EntityGenerator($this->getContainer(), $this->twig, $this->output, $packageName, $path);
         $gradleGenerator = new GradleGenerator($this->twig, $this->output, $packageName, $path);
         $fileGenerator = new FileGenerator($this->twig, $this->output, $packageName, $path);
 

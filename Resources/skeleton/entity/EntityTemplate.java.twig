@@ -327,10 +327,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 {% endif %}
 
     public final String getApiPath() {
-        String[] table = {{ entityName }}.TABLE.split("_");
-        for (int i=0; i<table.length; i++)
-        if (!table[i].endsWith("s")) table[i] += "s";
-        return StringUtils.join(table, "/");
+        return "{{ apiPath }}";
     }
 
     @Override

@@ -273,6 +273,20 @@ public class Api {
      * TODO : DATA LOADER, SAVER, DELETER
      */
 
+    private String getErrorMessage(HttpData request) {
+        try {
+            JSONObject json = request.asJSONObject();
+            if (json.has("error")) {
+                JSONObject error = json.getJSONObject("error");
+                if (error.has("message"))
+                    return error.getString("message");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "JSONException: " + e.getMessage(), e);
+        }
+        return "Unknown error";
+    }
+
     /**
      * Chargement des Entités
      *
@@ -308,7 +322,7 @@ public class Api {
             request.data("updated", String.valueOf((int) (lastSync / 1000)));
             request.get(httpContext);
             // if (Constants.DEBUG) Log.d(TAG+".Load", "-> res: " + request.asString());
-            if (!request.isHttpOK()) throw new AuthenticatorException(request.asJSONObject().getString("message"));
+            if (!request.isHttpOK()) throw new AuthenticatorException(getErrorMessage(request));
             else {
                 JSONArray ints = request.asJSONArray();
                 for (int i = 0; i < ints.length(); i++) {
@@ -355,7 +369,7 @@ public class Api {
             if (entity.getSourceId() > 0) request.put(httpContext);
             else request.post(httpContext);
             Log.d(TAG + ".Save", "-> result: " + request.asString());
-            if (!request.isHttpOK()) throw new AuthenticatorException(request.asJSONObject().getString("message"));
+            if (!request.isHttpOK()) throw new AuthenticatorException(getErrorMessage(request));
             else {
                 JSONObject result = request.asJSONObject();
                 if (result.has("id")) sourceId = result.getInt("id");
@@ -390,13 +404,10 @@ public class Api {
             request = getHttpData(account, url).delete(httpContext);
             // if (Constants.DEBUG) Log.d(TAG+".Delete", "-> result: " + request.asString());
             success = request.isHttpOK();
-            if (!success) throw new AuthenticatorException(request.asJSONObject().getString("message"));
+            if (!success) throw new AuthenticatorException(getErrorMessage(request));
         } catch (HttpData.HttpDataException e) {
             Log.e(TAG + ".Delete", "HttpDataException: " + e.getMessage());
             throw new IOException(e.getMessage());
-        } catch (JSONException e) {
-            Log.e(TAG + ".Delete", "JSONException: " + e.getMessage());
-            throw new AuthenticatorException(e.getMessage());
         } finally {
             CloseUtils.closeQuietly(request);
         }

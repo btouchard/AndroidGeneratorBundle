@@ -8,11 +8,14 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\ApiPath;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\EntityFile;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Exception\GeneratorException;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Core class to generate Entities parts (Entity, SyncService and Sync Adaptor)
@@ -28,6 +31,12 @@ final class EntityGenerator extends Generator {
      * @var int
      */
     private static $DIRECTORY_ID = 100;
+
+    /**
+     * App container
+     * @var ContainerInterface
+     */
+    private $container;
 
     /**
      * Java destination path
@@ -54,8 +63,9 @@ final class EntityGenerator extends Generator {
      * @param $packageName
      * @param $path
      */
-    public function __construct(\Twig_Environment $twig, OutputInterface $output, $packageName, $path) {
+    public function __construct(ContainerInterface $container, \Twig_Environment $twig, OutputInterface $output, $packageName, $path) {
         parent::__construct($twig, $output, $packageName, $path);
+        $this->container = $container;
         $this->javaPath = $path . '/app/src/main/java/' . str_replace('.', '/', $this->packageName);
     }
 
@@ -130,6 +140,7 @@ final class EntityGenerator extends Generator {
         $entityName = $this->parser->getEntityName($entity->getName());
         $this->output->write('Generate: Entity ' . $entityName);
         $mappings = $this->getAssociationMappings($entity);
+        $apiPath = $this->getApiPath($entity);
         $target = $this->javaPath . '/entity/' . $entityName . '.java';
         $filePropertyName = $this->getFilePropertyName($entity);
         $withData = !empty($filePropertyName); //!empty($entity->getLifecycleCallbacks('postPersist'));
@@ -149,6 +160,7 @@ final class EntityGenerator extends Generator {
         $params = [
             'package' => $this->packageName,
             'entityName' => $entityName,
+            'apiPath' => $apiPath,
             'anonymousAccess' => $anonymous,
             'withData' => $withData,
             'providerName' => $provider,
@@ -197,6 +209,21 @@ final class EntityGenerator extends Generator {
             }
         }
         return $result;
+    }
+
+    /**
+     * Return api path for Entity
+     * @param ClassMetadata $entity
+     * @return string
+     */
+    private function getApiPath(ClassMetadata $entity) {
+        $reflectionClass = new \ReflectionClass($entity->getName());
+        $reader = new AnnotationReader();
+        $annotations = $reader->getClassAnnotation($reflectionClass, ApiPath::class);
+        if (!empty($annotations->path))
+            return $annotations->path;
+        $inflect = $this->container->get('kolapsis.string.utils');
+        return strtolower(preg_replace('/\B([A-Z])/', '_$1', $inflect->pluralize($entity->getName())));
     }
 
     /**
