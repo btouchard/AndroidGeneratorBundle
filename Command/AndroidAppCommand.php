@@ -38,7 +38,7 @@ final class AndroidAppCommand extends ContainerAwareCommand {
      * Enable/Disable debug
      * @var bool
      */
-    static $DEBUG = true;
+    private static $DEBUG = false;
 
     /**
      * Twig environment
