@@ -200,7 +200,7 @@ final class EntityGenerator extends Generator {
     }
 
     /**
-     * Return Android Entity data property/field name (for download/upload)
+     * Return Android Entity data property name (for download/upload)
      * @param ClassMetadata $entity
      * @return null|string
      */
