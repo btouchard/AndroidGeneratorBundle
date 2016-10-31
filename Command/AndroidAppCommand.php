@@ -102,6 +102,15 @@ final class AndroidAppCommand extends ContainerAwareCommand {
             exit;
         }
 
+        $output->writeln([
+            '==================================',
+            'Android App Generator',
+            '==================================',
+        ]);
+
+        $writeSep = empty($appName) || empty($path) || empty($domainName) || empty($apiUrl); // || empty($packageName);
+        if ($writeSep) $output->writeln('');
+
         if (empty($appName)) {
             $appName = str_replace('Bundle', '', $bundle->getName());
             $question = new Question('Please enter the <info>App Name</info> [' . $appName . ']: ', $appName);
@@ -132,32 +141,36 @@ final class AndroidAppCommand extends ContainerAwareCommand {
             $tmp = array_reverse($tmp);
             $packageName = implode('.', $tmp) . '.' . preg_replace('/[\s_-]+/', '', strtolower($appName));
         }
-
+        if ($writeSep) $output->writeln('==================================');
 
         $output->writeln([
-            '==================================',
-            'Android App Generator',
-            '==================================',
-            '<info>Android API: '.$androidVersion.' (min: '.$minSdkVersion.')</info>',
-            '<info>Android SDK path: '.$sdkPath.'</info>',
-            '<info>Gradle: '.$gradleVersion.'</info>',
+            '',
+            'Android API: <info>'.$androidVersion.' (min: '.$minSdkVersion.')</info>',
+            'Android SDK path: <info>'.$sdkPath.'</info>',
+            'Gradle: <info>'.$gradleVersion.'</info>',
             '----------------------------------',
-            '<info>App name: '.$appName.'</info>',
-            '<info>App path: '.$path.'</info>',
-            '<info>Package: '.$packageName.'</info>',
-            '<info>API url: '.$apiUrl.'</info>',
+            'App name: <info>'.$appName.'</info>',
+            'App path: <info>'.$path.'</info>',
+            'Package: <info>'.$packageName.'</info>',
+            'API url: <info>'.$apiUrl.'</info>',
             '',
         ]);
 
         if (!$build) {
-            $question = new Question('<question>This is correct ? [Y/n]</question>', 'Y');
-            $build = $helper->ask($input, $output, $question) === 'Y';
+            list($d, $s) = AndroidAppCommand::$DEBUG ? ['n', 'N/y'] : ['Y', 'Y/n'];
+            $question = new Question('<question>This is correct ? ['.$s.']</question>', $d);
+            $build = strtoupper($helper->ask($input, $output, $question)) === 'Y';
         }
 
         if (!$build) {
             $this->output->writeln('<comment>Bye</comment>');
             exit;
         }
+
+        $output->writeln([
+            '==================================',
+            ''
+        ]);
 
         $skeletonDirs = $this->getSkeletonDirs($kernel, $bundle);
         $this->twig = $this->getTwigEnvironment($skeletonDirs);
@@ -166,7 +179,7 @@ final class AndroidAppCommand extends ContainerAwareCommand {
         $parser->parse($bundle);
 
         if (!is_dir($path)) {
-            $this->output->write('Generate Android application');
+            $this->output->write('<info>Generate Android application</info>');
             $process = new Process("android create project --target android-$androidVersion --activity MainActivity --package $packageName --gradle --gradle-version $gradleVersion --path $path");
             $process->run();
             $this->output->writeln(' -> <info>OK</info>');

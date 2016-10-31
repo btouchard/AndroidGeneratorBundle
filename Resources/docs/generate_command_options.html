@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="UTF-8">
+    <title>AndroidGeneratorBundle by Benjamin Touchard @ 2016</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="css/github-light.css" media="screen">
+</head>
+<body>
+<section class="page-header">
+    <h1 class="project-name">kOlapsis Android Generator Bundle</h1>
+    <h2 class="project-tagline">Generate base Android Application with Account (jwt authentication include)<br>
+        SyncService, SyncAdapter and ContentProvider for entity.<br>
+        <strong>All based on your Symfony application.</strong></h2>
+</section>
+
+<section class="main-content">
+    <h3>Full Documentation</h3>
+    <ul>
+        <li><a href="install_and_configure.html">Installation &amp; configuration</a></li>
+        <li><a href="user_config.html">User configuration for API</a></li>
+        <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
+        <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+        <li><a href="generate_command_options.html">Generate command options</a></li>
+    </ul>
+    <h1>generate:android:app options</h1>
+
+    <h2>Require argument: Bundle target name</h2>
+    <p>The only one require argument is the project bundle name</p>
+    <pre>php bin/console generate:android:app <b>BundleName</b></pre>
+
+    <h2>Command options</h2>
+    <h4>Build options :</h4>
+    <ul>
+        <li><b>-t | --target_sdk</b>: Android target SDK<br><small>Default: 24</small></li>
+        <li><b>-m | --min_sdk</b>: Android min version SDK<br><small>Default: 21</small></li>
+        <li><b>-s | --sdk_path</b>: Android SDK path<br><small>Default: /opt/android-sdk</small></li>
+        <li><b>-g | --gradle_version</b>: Gradle version used to create project<br><small>Default: 2.2.0</small></li>
+    </ul>
+    <h4>Android options :</h4>
+    <ul>
+        <li><b>-a | --app_name</b>: Android application name<br><small>Default: based on Bundle name</small></li>
+        <li><b>-p | --app_path</b>: Path where store the Android application<br><small>Default: in "android/{app_name}" on root project directory</small></li>
+        <li><b>-d | --app_domain</b>: Android application target domain name<br><small>Used for API url and package name if empty</small></li>
+        <li><b>-k | --app_package</b>: Android application package name<<br><small>Default: construct from domain name and app name</small>/li>
+        <li><b>-u | --api_url</b>: Android application RESTfull API url<br><small>Default: construct from domain name and app name</small></li>
+    </ul>
+
+    <p style="text-align: left">&lt; Previous <a href="generate_android_application.html">Finally, generate Android application</a></p>
+
+    <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/btouchard/AndroidGeneratorBundle">AndroidGeneratorBundle</a> is maintained by <a
+                href="https://github.com/btouchard">btouchard</a>.</span>
+    </footer>
+
+</section>
+
+<script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-86543354-1', 'auto');
+    ga('send', 'pageview');
+
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@
         <li><a href="user_config.html">User configuration for API</a></li>
         <li><a href="entity_definition.html">Define your Entity in Symfony application</a></li>
         <li><a href="generate_android_application.html">Finally, generate Android application</a></li>
+        <li><a href="generate_command_options.html">Generate command options</a></li>
     </ul>
     <h1>Automate Android application step by step</h1>
 
@@ -33,9 +34,8 @@
     <p>AndroidGeneratorBundle provide a console command to generate application.<br>
     <strong>php bin/console generate:android:app</strong></p>
     <p>You juste need to pass Bundle name as command argument, like this:</p>
-    <pre>php bin/console generate:android:app AppBundle</pre>
-    <p><i>See other options <a href="#">here</a></i></p>
-    <p>The script start and prompt somme information like
+    <pre>php bin/console generate:android:app YourBundle</pre>
+    <p>Resulting, the generator ask you some parameters:
     <ul>
         <li><b>App name: </b> Android application name</li>
         <li><b>App path: </b> Where is stored application</li>
@@ -46,17 +46,46 @@
     <pre>==================================
 Android App Generator
 ==================================
-<span style="color: green">Android API: 24 (min: 21)
-Android SDK path: /opt/android-sdk
-Gradle: 2.2.0</span>
 
-Please enter the <span style="color: green">App name</span> [AndroidGenDemo]:
-Please enter the <span style="color: green">App path</span> [/home/benjamin/Documents/workspace/AndroidGenDemo]:
-Please enter the <span style="color: green">App domain name</span> [kolapsis.com]:
-Please enter the <span style="color: green">App API url</span> [http://192.168.0.XX/AndroidGenDemo/web/api]:
+Please enter the App Name [App]:
+Please enter the App path [/home/benjamin/Documents/workspace/App]:
+Please enter the App domain name [kolapsis.com]:
+Please enter the App API url [http://192.168.0.28/FullApp/web/api]:
 ==================================
 
-Generating App: "AndroidGenDemo" [package: com.kolapsis.androidgendemo]
+Android API: 24 (min: 21)
+Android SDK path: /opt/android-sdk
+Gradle: 2.2.0
+----------------------------------
+App name: App
+App path: /home/benjamin/Documents/workspace/App
+Package: com.kolapsis.app
+API url: http://192.168.0.28/FullApp/web/api
+
+This is correct ? [Y/n]
+...</pre>
+    <p>Or you can pass all parameters as options, like this</p>
+    <pre>php bin/console generate:android:app YourBundle -t 24 -m 21 -s /opt/android -g 2.2.0 -a MyApp -p ~/workspace/MyApp -d host.com -u http://api.host.com</pre>
+    <p>Resulting, without interaction: </p>
+    <pre>==================================
+Android App Generator
+==================================
+
+Android API: 24 (min: 21)
+Android SDK path: /opt/android
+Gradle: 2.2.0
+----------------------------------
+App name: MyApp
+App path: /home/benjamin/workspace/MyApp
+Package: com.host.myapp
+API url: http://api.host.com
+
+This is correct ? [Y/n]
+...</pre>
+    <p>And final, if you respond positivly at the last answer "Thie is correct ?", resulting :</p>
+    <pre>...
+==================================
+Generating App: "MyApp" [package: com.kolapsis.myapp]
 ==================================
 
 Parsing: AppBundle -> <span style="color: green">OK</span>
@@ -70,7 +99,13 @@ Generate: Entity Product -> <span style="color: green">OK</span>
 
 <span style="color: orange">Finished !</span></pre>
 
-    <p><b>It's down, now you can open your Android application project with your preferred IDE, and compile it for Android.</b></p>
+    <p>
+        See all <a href="generate_command_options.html">generate:android:app</a> options.
+    </p>
+
+    <h2>Step 10) Edit Android application</h2>
+    <p><b>It's down, now you can open your Android application project with your preferred IDE, and compile it for Android.</b><br>
+    You can find your Android application project in specified path when generate it.</p>
 
 
     <p style="text-align: left">&lt; Previous <a href="entity_definition.html">Define your Entity in Symfony application</a></p>

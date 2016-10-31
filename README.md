@@ -56,6 +56,10 @@ Usage
 ``` BASH
 $ php bin/console android:create:app YourBundle
 ```
+Or
+``` BASH
+$ php bin/console generate:android:app YourBundle -t 24 -m 21 -s /opt/android -g 2.2.0 -a MyApp -p ~/workspace/MyApp -d host.com -u http://api.host.com
+```
 
 Documentation
 -------------
@@ -65,6 +69,6 @@ Documentation
 License
 -------
 
-This bundle is under the MIT license. See the complete license in the bundle:
+This bundle is under the BSD 2-Clause license. See the complete license in the bundle:
 
     Resources/meta/LICENSE
