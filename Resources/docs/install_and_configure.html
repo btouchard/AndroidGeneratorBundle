@@ -29,16 +29,9 @@
 
     <h2>Step 1) Create your application and install needed dependencies</h2>
     <pre>symfony new AndroidGenDemo</pre>
-    <p>Update your <b>composer.json</b> to add repository</p>
+    <p>Set minimum stability in your <b>composer.json</b></p>
     <pre>...
-"repositories" : [{
-    "type" : "vcs",
-    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
-}],
-...</pre>
-    <p>And set minimum stability (project currently in dev...)</p>
-    <pre>...
-"minimum-stability": "dev"
+"minimum-stability": "dev",
 ...</pre>
     <p>Next, you must be install bundle:</p>
     <pre>composer require kolapsis/androidgenerator-bundle</pre>

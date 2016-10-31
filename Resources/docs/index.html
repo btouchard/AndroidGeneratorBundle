@@ -45,16 +45,9 @@
     <i>Android SDK must be installed and accessible globally</i>
     <p>Create your Symfony application</p>
     <pre>symfony new AndroidGenDemo</pre>
-    <p>Update your <b>composer.json</b> to add repository</p>
+    <p>Set minimum stability in your <b>composer.json</b></p>
     <pre>...
-"repositories" : [{
-    "type" : "vcs",
-    "url" : "https://github.com/btouchard/AndroidGeneratorBundle.git"
-}],
-...</pre>
-    <p>And set minimum stability (project currently in dev...)</p>
-    <pre>...
-"minimum-stability": "dev"
+"minimum-stability": "dev",
 ...</pre>
     <p>Next install Bundle using <a href="https://getcomposer.org/doc/00-intro.md" target="_blank">composer</a></p>
     <pre>composer require kolapsis/androidgenerator-bundle</pre>
