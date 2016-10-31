@@ -26,7 +26,15 @@ Installation
 
 _Android SDK must be installed !!_
 
-Next install Bundle using [composer](https://getcomposer.org/doc/00-intro.md) 
+Add minimum-stability rule to your composer.json
+
+``` JSON 
+...
+"minimum-stability": "dev",
+...
+```
+
+Next install AndroidGeneratorBundle using [composer](https://getcomposer.org/doc/00-intro.md) 
 ``` BASH
 composer require kolapsis/androidgenerator-bundle
 ```
@@ -46,13 +54,14 @@ Usage
 - Generate your Android Application with:
 
 ``` BASH
-php bin/console generate:android:app YourBundle
+php bin/console android:create:app YourBundle
 ```
 
 Documentation
 -------------
 
-[Read the documentation](https://btouchard.github.io/AndroidGeneratorBundle/)
+Coming soon
+<!--[Read the documentation](http://androidgeneratorbundle.kolapsis.com)-->
 
 License
 -------
