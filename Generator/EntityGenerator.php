@@ -169,11 +169,13 @@ final class EntityGenerator extends Generator {
      */
     private function typeToJava($type) {
         switch ($type) {
-            case 'boolean'; return 'bool';
-            case 'integer'; return 'int';
-            case 'float'; return 'double';
-            case 'long'; return 'long';
-            case 'text'; return 'String';
+            case 'boolean': return 'bool';
+            case 'integer': return 'int';
+            case 'float':
+            case 'double':
+                return 'double';
+            case 'long': return 'long';
+            case 'text': return 'String';
             default: return ucfirst($type);
         }
     }
