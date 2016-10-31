@@ -36,13 +36,13 @@ Add minimum-stability rule to your composer.json
 
 Next install AndroidGeneratorBundle using [composer](https://getcomposer.org/doc/00-intro.md) 
 ``` BASH
-composer require kolapsis/androidgenerator-bundle
+$ composer require kolapsis/androidgenerator-bundle
 ```
 
 I also advise you to install:
 ``` BASH
-composer require friendsofsymfony/rest-bundle
-composer require lexik/jwt-authentication-bundle
+$ composer require friendsofsymfony/rest-bundle
+$ composer require lexik/jwt-authentication-bundle
 ```
 
 Usage
@@ -54,7 +54,7 @@ Usage
 - Generate your Android Application with:
 
 ``` BASH
-php bin/console android:create:app YourBundle
+$ php bin/console android:create:app YourBundle
 ```
 
 Documentation
