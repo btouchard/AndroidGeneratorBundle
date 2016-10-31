@@ -60,8 +60,7 @@ $ php bin/console android:create:app YourBundle
 Documentation
 -------------
 
-Coming soon
-<!--[Read the documentation](http://androidgeneratorbundle.kolapsis.com)-->
+[Read the documentation](https://btouchard.github.io/AndroidGeneratorBundle/)
 
 License
 -------
