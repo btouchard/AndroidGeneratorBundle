@@ -32,6 +32,13 @@ final class Entity {
     public $providerName = 'Default';
 
     /**
+     * Entity uploadable file field name
+     *
+     * @var string
+     */
+    public $file;
+
+    /**
      * Authorize anonymous Entity access on API (no authentication needed)
      *
      * @var bool

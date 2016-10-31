@@ -72,7 +72,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Category
  * <b>@Android\Entity("Category", providerName="Product")</b>
- * <b>@Android\ApiPath("categories")</b>
+ * <b>@Android\Api("categories", methods={"GET"})</b>
  * @ORM\Table(name="category")
  * @ORM\Entity(repositoryClass="AppBundle\Repository\CategoryRepository")
  */
@@ -112,7 +112,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Product
  * <b>@Android\Entity("Product", providerName="Product")</b>
- * <b>@Android\ApiPath("products")</b>
+ * <b>@Android\Api("products", methods={"GET"})</b>
  * @ORM\Table(name="product")
  * @ORM\Entity(repositoryClass="AppBundle\Repository\ProductRepository")
  */

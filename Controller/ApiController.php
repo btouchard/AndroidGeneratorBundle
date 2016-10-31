@@ -8,9 +8,10 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Controller;
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use FOS\RestBundle\Controller\Annotations\Route;
 use FOS\RestBundle\Controller\Annotations\View;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\ApiPath;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Api;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -19,6 +20,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
@@ -93,9 +95,8 @@ class ApiController extends Controller implements ContainerAwareInterface {
      */
     public function getAction(Request $request, $entityName) {
         $entity = $this->getEntity($request, $entityName);
-        if ($entity)
-            return $this->getDoctrine()->getRepository($entity->getName())->findAll();
-        throw $this->createNotFoundException();
+        $this->checkAllowedMethod($request->getMethod(), $entity);
+        return $this->getDoctrine()->getRepository($entity->getName())->findAll();
     }
 
     /**
@@ -106,8 +107,10 @@ class ApiController extends Controller implements ContainerAwareInterface {
      * @param $entityName
      * @return array
      */
-    public function postAuthorAction(Request $request, $entityName) {
-
+    public function postAction(Request $request, $entityName) {
+        $entity = $this->getEntity($request, $entityName);
+        $this->checkAllowedMethod($request->getMethod(), $entity);
+        return [$request->getMethod() => $entityName];
     }
 
     /**
@@ -119,8 +122,11 @@ class ApiController extends Controller implements ContainerAwareInterface {
      * @param $id
      * @return array
      */
-    public function putAuthorAction(Request $request, $entityName, $id) {
-
+    public function putAction(Request $request, $entityName, $id) {
+        $entity = $this->getEntity($request, $entityName);
+        $this->checkAllowedMethod($request->getMethod(), $entity);
+        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        return [$request->getMethod() => $entityName, 'value' => $value];
     }
 
     /**
@@ -130,9 +136,13 @@ class ApiController extends Controller implements ContainerAwareInterface {
      * @param Request $request
      * @param $entityName
      * @param $id
+     * @return array
      */
-    public function deleteAuthorAction(Request $request, $entityName, $id) {
-
+    public function deleteAction(Request $request, $entityName, $id) {
+        $entity = $this->getEntity($request, $entityName);
+        $this->checkAllowedMethod($request->getMethod(), $entity);
+        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        return [$request->getMethod() => $entityName, 'value' => $value];
     }
 
     /**
@@ -147,20 +157,22 @@ class ApiController extends Controller implements ContainerAwareInterface {
      */
     public function fileAction(Request $request, $entityName, $id, $field) {
         $entity = $this->getEntity($request, $entityName);
-        $entity = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        if (!is_object($entity)) throw $this->createNotFoundException();
-        $path = realpath($entity->getAbsolutePath());
+        if ($request->getMethod() != 'HEAD')
+            $this->checkAllowedMethod($request->getMethod(), $entity);
+        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        if (!is_object($value)) throw $this->createNotFoundException();
+        $path = realpath($value->getAbsolutePath());
         switch ($request->getMethod()) {
             case 'HEAD':
                 return new Response('', 200, ['Content-Length' => is_file($path) ? filesize($path) : 0]);
             case 'POST':
                 $file = $request->files->get($field);
                 if ($file != null && $file->getError() == 0) {
-                    $entity->setFile($file);
+                    $value->setFile($file);
                     $em = $this->get('doctrine.orm.entity_manager');
-                    $em->persist($entity);
+                    $em->persist($value);
                     $em->flush();
-                    return $entity;
+                    return $value;
                 }
                 throw new BadRequestHttpException("Exceeded file size");
             default:
@@ -185,7 +197,7 @@ class ApiController extends Controller implements ContainerAwareInterface {
         foreach ($metadata->getMetadata() as $meta) {
             $reflectionClass = new \ReflectionClass($meta->getName());
             $reader = new AnnotationReader();
-            $annotation = $reader->getClassAnnotation($reflectionClass, ApiPath::class);
+            $annotation = $reader->getClassAnnotation($reflectionClass, Api::class);
             if ($annotation && $annotation->path) {
                 //dump($meta->getName(), $annotation->path);
                 $routes[$annotation->path] = $meta;
@@ -198,7 +210,7 @@ class ApiController extends Controller implements ContainerAwareInterface {
      * Return entity for request path
      * @param Request $request
      * @param $path
-     * @return mixed|null
+     * @return ClassMetadata
      */
     private function getEntity(Request $request, $path) {
         $controller = $request->attributes->get('_controller');
@@ -209,7 +221,22 @@ class ApiController extends Controller implements ContainerAwareInterface {
         if (isset($routes[$path])) {
             return $routes[$path];
         }
-        return null;
+        throw $this->createNotFoundException();
+    }
+
+    /**
+     * Throw Not allowed exception if mathod is not allowed in annotations entity
+     * @param String $method
+     * @param ClassMetadata $entity
+     */
+    private function checkAllowedMethod($method, ClassMetadata $entity) {
+        $reflectionClass = new \ReflectionClass($entity->getName());
+        $reader = new AnnotationReader();
+        $annotation = $reader->getClassAnnotation($reflectionClass, Api::class);
+        if ($annotation && $annotation->methods) {
+            if (!in_array($method, $annotation->methods))
+                throw new MethodNotAllowedHttpException($annotation->methods);
+        }
     }
 
 }

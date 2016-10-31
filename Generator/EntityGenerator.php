@@ -8,10 +8,9 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Generator;
 
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\Mapping\ClassMetadata;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\ApiPath;
+use Doctrine\ORM\Mapping\Table;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Api;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\EntityFile;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\File;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Exception\GeneratorException;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Parser\BundleParser;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -139,8 +138,9 @@ final class EntityGenerator extends Generator {
     private function generateEntity($provider, ClassMetadata $entity, $anonymous) {
         $entityName = $this->parser->getEntityName($entity->getName());
         $this->output->write('Generate: Entity ' . $entityName);
-        $mappings = $this->getAssociationMappings($entity);
+        $tableName = $this->getTableName($entity);
         $apiPath = $this->getApiPath($entity);
+        $mappings = $this->getAssociationMappings($entity);
         $target = $this->javaPath . '/entity/' . $entityName . '.java';
         $filePropertyName = $this->getFilePropertyName($entity);
         $withData = !empty($filePropertyName); //!empty($entity->getLifecycleCallbacks('postPersist'));
@@ -160,6 +160,7 @@ final class EntityGenerator extends Generator {
         $params = [
             'package' => $this->packageName,
             'entityName' => $entityName,
+            'tableName' => $tableName,
             'apiPath' => $apiPath,
             'anonymousAccess' => $anonymous,
             'withData' => $withData,
@@ -212,6 +213,27 @@ final class EntityGenerator extends Generator {
     }
 
     /**
+     * Return SQLite table name for Entity
+     * @param ClassMetadata $entity
+     * @return string
+     */
+    private function getTableName(ClassMetadata $entity) {
+        $reflectionClass = new \ReflectionClass($entity->getName());
+        $reader = new AnnotationReader();
+        $annotations = $reader->getClassAnnotation($reflectionClass, Entity::class);
+        if ($annotations != null) {
+            $name = $annotations->tableName;
+            if (empty($name)) {
+                $table = $reader->getClassAnnotation($reflectionClass, Table::class);
+                if ($table != null && !empty($table->name)) $name = $table->name;
+            }
+        }
+        if (empty($name))
+            $name = strtolower(preg_replace('/\B([A-Z])/', '_$1', $entity->getName()));
+        return $name;
+    }
+
+    /**
      * Return api path for Entity
      * @param ClassMetadata $entity
      * @return string
@@ -219,7 +241,7 @@ final class EntityGenerator extends Generator {
     private function getApiPath(ClassMetadata $entity) {
         $reflectionClass = new \ReflectionClass($entity->getName());
         $reader = new AnnotationReader();
-        $annotations = $reader->getClassAnnotation($reflectionClass, ApiPath::class);
+        $annotations = $reader->getClassAnnotation($reflectionClass, Api::class);
         if (!empty($annotations->path))
             return $annotations->path;
         $inflect = $this->container->get('kolapsis.string.utils');
@@ -234,12 +256,12 @@ final class EntityGenerator extends Generator {
     private function getFilePropertyName(ClassMetadata $entity) {
         $reflectionClass = new \ReflectionClass($entity->getName());
         $reader = new AnnotationReader();
-        $annotations = $reader->getClassAnnotation($reflectionClass, EntityFile::class);
-        if (!empty($annotations->field))
-            if (in_array($annotations->field, $entity->getFieldNames()))
-                return $annotations->field;
+        $annotations = $reader->getClassAnnotation($reflectionClass, Entity::class);
+        if (!empty($annotations->file))
+            if (in_array($annotations->file, $entity->getFieldNames()))
+                return $annotations->file;
             else
-                throw new GeneratorException("Field " . $annotations->field . " must be defined in " . $entity->getName());
+                throw new GeneratorException("Field " . $annotations->file . " must be defined as attribute in " . $entity->getName());
         return null;
     }
 

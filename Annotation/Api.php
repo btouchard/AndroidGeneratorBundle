@@ -1,12 +1,12 @@
 <?php
 /**
- * Class EntityFile Annotation
+ * Class Entity Annotation
  */
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Annotation;
 
 /**
- * Annotation for Android Entity file upload definition
+ * Annotation for Android RESTFull Api definition
  *
  * @package Kolapsis\Bundle\AndroidGeneratorBundle\Annotation
  * @author Benjamin Touchard <benjamin@kolapsis.com>
@@ -14,14 +14,21 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Annotation;
  * @Annotation
  * @Target("CLASS")
  */
-final class EntityFile {
+final class Api {
 
     /**
-     * Entity file field name
+     * Android RESTFull Api path
      *
      * @var string
      */
-    public $field;
+    public $path;
+
+    /**
+     * Android RESTFull Api allowed method(s)
+     *
+     * @var array
+     */
+    public $methods = [];
 
     /**
      * Annotation constructor.
@@ -29,7 +36,7 @@ final class EntityFile {
      */
     public function __construct($options) {
         if (isset($options['value'])) {
-            $options['field'] = $options['value'];
+            $options['path'] = $options['value'];
             unset($options['value']);
         }
         foreach ($options as $key => $value) {

@@ -32,7 +32,7 @@ public final class {{ entityName }} extends Entity{% if withData %} implements E
 
     public static final String TAG				= Constants.APP_NAME + ".{{ entityName }}";
 
-    public static final String TABLE 			= "{{ entityName|slug }}";
+    public static final String TABLE 			= "{{ tableName }}";
     public static final Uri CONTENT_URI 		= Uri.parse("content://" + {{ providerName }}Provider.AUTHORITY + "/" + TABLE);
     public static final String CONTENT_TYPE 	= "vnd.android.cursor.dir/{{ package|vnd }}." + TABLE;
     public static final String MIME_TYPE 		= "vnd.android.cursor.item/{{ package|vnd }}." + TABLE;

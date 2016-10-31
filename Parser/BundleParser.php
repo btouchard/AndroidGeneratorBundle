@@ -9,7 +9,6 @@ namespace Kolapsis\Bundle\AndroidGeneratorBundle\Parser;
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\DBAL\Schema\Table;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -90,14 +89,9 @@ class BundleParser {
             $reader = new AnnotationReader();
             $annotation = $reader->getClassAnnotation($reflectionClass, Entity::class);
             if (!empty($annotation) && !$annotation->ignoredClass) {
-                if (empty($annotation->tableName)) {
-                    $table = $reader->getClassAnnotation($reflectionClass, Table::class);
-                    if ($table != null && !empty($table->name)) $annotation->tableName = $table->name;
-                }
                 $providerName = $annotation->providerName;
                 $this->providers[$providerName]['anonymous'] = (isset($this->providers[$providerName]['anonymous']) ? $this->providers[$providerName]['anonymous'] : false)
                     || $annotation->anonymousAccess;
-
                 $this->providers[$providerName]['entities'][] = $meta;
             }
         }
