@@ -179,7 +179,7 @@ final class AndroidAppCommand extends ContainerAwareCommand {
         $parser->parse($bundle);
 
         if (!is_dir($path)) {
-            $this->output->write('<info>Generate Android application</info>');
+            $this->output->write('Generate Android application');
             $process = new Process("android create project --target android-$androidVersion --activity MainActivity --package $packageName --gradle --gradle-version $gradleVersion --path $path");
             $process->run();
             $this->output->writeln(' -> <info>OK</info>');

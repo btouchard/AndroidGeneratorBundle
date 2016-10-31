@@ -171,6 +171,7 @@ final class EntityGenerator extends Generator {
         switch ($type) {
             case 'boolean'; return 'bool';
             case 'integer'; return 'int';
+            case 'float'; return 'double';
             case 'long'; return 'long';
             case 'text'; return 'String';
             default: return ucfirst($type);

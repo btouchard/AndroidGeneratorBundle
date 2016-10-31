@@ -72,7 +72,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Category
  * <b>@Android\Entity("Category", providerName="Product")</b>
- * <b>@Android\ApiPath("category")</b>
+ * <b>@Android\ApiPath("categories")</b>
  * @ORM\Table(name="category")
  * @ORM\Entity(repositoryClass="AppBundle\Repository\CategoryRepository")
  */
@@ -135,7 +135,7 @@ class Product
     private $label;
 
     /**
-     * @var AppBundle\Entity\Category
+     * @var Category
      * @ORM\ManyToOne(targetEntity="AppBundle\Entity\Category")
      * @ORM\JoinColumn(name="category_id", referencedColumnName="id")
      * <b>@Serializer\Exclude()</b>

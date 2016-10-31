@@ -90,7 +90,7 @@ class User extends BaseUser {
 }
 </pre>
     <p>Next create serialization model for JMSSerializer<br>
-    Create file <b>Resources/serialize/Model.User.yml</b>, and put this for exposing data from FOSUserModel base class</p>
+    Create file <b>Resources/serializer/Model.User.yml</b>, and put this for exposing data from FOSUserModel base class</p>
     <pre>FOS\UserBundle\Model\User:
     exclusion_policy: ALL
     properties:
@@ -104,8 +104,10 @@ class User extends BaseUser {
             groups: [Me]
         enabled:
             expose: true</pre>
-    <p>Now, update database:</p>
-    <pre>php bin/console doctrine:generate:entities AppBundle
+    <h4>Next, create &amp; update database:</h4>
+    <p>Edit your <b>parameters.yml</b> and setup your database connexion.</p>
+    <pre>php bin/console doctrine:database:create
+php bin/console doctrine:generate:entities AppBundle
 php bin/console doctrine:schema:update --force
 php bin/console cache:clear</pre>
 
