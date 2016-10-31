@@ -6,6 +6,7 @@
   "keywords" : [ "Android", "Generator", "Rest API" ],
   "homepage": "https://btouchard.github.io/AndroidGeneratorBundle",
   "license" : [ "MIT" ],
+  "minimum-stability": "dev",
   "require" : {
     "php": ">=5.5.9",
     "symfony/framework-bundle": "~2.3|~3.0",
@@ -25,10 +26,9 @@
     "psr-4" : { "Kolapsis\\Bundle\\AndroidGeneratorBundle\\" : "" },
     "exclude-from-classmap": [ "/Tests/" ]
   },
-  "minimum-stability": "dev",
   "extra" : {
     "branch-alias" : {
-      "dev-master" : "1.0-dev"
+      "dev-master" : "master"
     }
   }
 }
