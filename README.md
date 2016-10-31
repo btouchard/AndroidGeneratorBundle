@@ -39,7 +39,13 @@ Add repository to your composer.json
 
 Next install Bundle using [composer](https://getcomposer.org/doc/00-intro.md) 
 ``` BASH
-php composer.phar require kolapsis/androidgenerator-bundle
+composer require "kolapsis/androidgenerator-bundle" "1.0-dev"
+```
+
+I also advise you to install:
+``` BASH
+composer require "friendsofsymfony/rest-bundle"
+composer require "lexik/jwt-authentication-bundle"
 ```
 
 Usage
