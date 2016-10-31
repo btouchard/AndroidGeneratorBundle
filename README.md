@@ -42,6 +42,12 @@ Next install Bundle using [composer](https://getcomposer.org/doc/00-intro.md)
 composer require "kolapsis/androidgenerator-bundle" "1.0-dev"
 ```
 
+I also advise you to install:
+``` BASH
+composer require "friendsofsymfony/rest-bundle"
+composer require "lexik/jwt-authentication-bundle"
+```
+
 Usage
 -----
 
