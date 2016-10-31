@@ -116,6 +116,10 @@ public class AccountHelper {
 		return sManager.getAccountsByType(Constants.ACCOUNT_TYPE).length > 0;
 	}
 
+	public static boolean hasAnonymousProvider() {
+		return {{ anonymousProvider }};
+	}
+
 	@SuppressLint("CommitPrefEdits")
 	public static void setAccount(Account account) {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(sContext);

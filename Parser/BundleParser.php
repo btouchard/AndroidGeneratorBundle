@@ -185,4 +185,8 @@ class BundleParser {
         return preg_replace('/(\w+\\\\)*/', '', $entity);
     }
 
+    public function hasAnonymousProvider() {
+        return count($this->providerNames(true)) > 0;
+    }
+
 }

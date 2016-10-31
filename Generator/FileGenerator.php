@@ -58,7 +58,8 @@ final class FileGenerator extends Generator {
         $this->generateFile('AccountHelper.java', $javaPath.'/helpers/AccountHelper.java', [
             'entities' => $entityNames,
             'authorities' => $authorities,
-            'providers' => $parser->providerNames(true)
+            'providers' => $parser->providerNames(true),
+            'anonymousProvider' => $parser->hasAnonymousProvider(),
         ]);
         $this->generateFile('DatabaseHelper.java', $javaPath.'/helpers/DatabaseHelper.java', ['entities' => $entityNames]);
         $this->generateFile('BaseSyncAdapter.java', $javaPath.'/sync/BaseSyncAdapter.java');

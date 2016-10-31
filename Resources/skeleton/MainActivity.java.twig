@@ -9,9 +9,11 @@ import android.util.Log;
 import {{ package }}.entity.*;
 import {{ package }}.helpers.AccountHelper;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>
-{
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
+
     public static final String TAG = Constants.APP_NAME + ".Main";
+
+    private static final int RESULT_NEW_ACCOUNT = 1;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -19,9 +21,22 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         setContentView(R.layout.main);
 
         AccountHelper.setContext(this);
-        if (!AccountHelper.hasAccount())
-            AccountHelper.addDefaultAccount();
+        if (!AccountHelper.hasAccount() && !AccountHelper.hasAnonymousProvider())
+            openAddAccount();
+        else {
+            if (!AccountHelper.hasAccount())
+                AccountHelper.addDefaultAccount();
+            initApp();
+        }
+    }
 
+    @SuppressWarnings("deprecation")
+    private void openAddAccount() {
+        Intent intent = AccountManager.newChooseAccountIntent(AccountHelper.getAccount(), null, new String[]{ Constants.ACCOUNT_TYPE }, true, null, null, null, null);
+        startActivityForResult(intent, RESULT_NEW_ACCOUNT);
+    }
+
+    private void initApp() {
 {% for entity in entities %}
         getSupportLoaderManager().initLoader({{ loop.index }}, null, this);
 {% endfor %}
