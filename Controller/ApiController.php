@@ -5,16 +5,14 @@
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Controller;
 
-use AppBundle\Form\EntityType;
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use FOS\RestBundle\Controller\Annotations\Route;
 use FOS\RestBundle\Controller\Annotations\View;
-use JMS\Serializer\SerializerInterface;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Api;
-use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Form\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
