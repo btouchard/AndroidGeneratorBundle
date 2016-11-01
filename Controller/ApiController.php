@@ -5,20 +5,23 @@
 
 namespace Kolapsis\Bundle\AndroidGeneratorBundle\Controller;
 
+use AppBundle\Form\EntityType;
 use Doctrine\Bundle\DoctrineBundle\Mapping\ClassMetadataCollection;
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use FOS\RestBundle\Controller\Annotations\Route;
 use FOS\RestBundle\Controller\Annotations\View;
+use JMS\Serializer\SerializerInterface;
 use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Api;
+use Kolapsis\Bundle\AndroidGeneratorBundle\Annotation\Entity;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Form\Forms;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -88,20 +91,37 @@ class ApiController extends Controller implements ContainerAwareInterface {
     /**
      * Return json entity collection
      * @Route("/{entityName}", requirements={"entityName"="[\w_]+"}, methods={"GET"}, name="api_get_entities")
-     * @View(serializerGroups={"Default"})
+     //* @View(serializerGroups={"Default"})
      * @param Request $request
      * @param $entityName
      * @return array
      */
-    public function getAction(Request $request, $entityName) {
+    public function getAllAction(Request $request, $entityName) {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
         return $this->getDoctrine()->getRepository($entity->getName())->findAll();
     }
 
     /**
+     * Return json entity
+     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"GET"}, name="api_get_entity")
+     //* @View(serializerGroups={"Default"})
+     * @param Request $request
+     * @param $entityName
+     * @param $id
+     * @return object
+     */
+    public function getOneAction(Request $request, $entityName, $id) {
+        $entity = $this->getEntity($request, $entityName);
+        $this->checkAllowedMethod($request->getMethod(), $entity);
+        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        if (!is_object($value)) throw $this->createNotFoundException();
+        return $value;
+    }
+
+    /**
      * Insert entity
-     * @Route("/{entityName}", requirements={"entityName"="[\w_]+"}, methods={"POST"}, name="api_post_author")
+     * @Route("/{entityName}", requirements={"entityName"="[\w_]+"}, methods={"POST"}, name="api_post_entity")
      * @View(serializerGroups={"Default"})
      * @param Request $request
      * @param $entityName
@@ -110,12 +130,24 @@ class ApiController extends Controller implements ContainerAwareInterface {
     public function postAction(Request $request, $entityName) {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
-        return [$request->getMethod() => $entityName];
+        $factory = Forms::createFormFactory();
+        $form = $factory->createBuilder(EntityType::class, null, ['entity' => $entity, 'data_class' => $entity->getName()])->getForm();
+        $form->submit($request->request->all(), false);
+        $insert = $form->getData();
+        $errors = $this->get('validator')->validate($insert);
+        if ($errors->count() > 0) {
+            $error = $errors->get(0);
+            throw new BadRequestHttpException($error->getMessage());
+        }
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($insert);
+        $em->flush();
+        return ['id' => $insert->getId()];
     }
 
     /**
      * Update entity
-     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"PUT"}, name="api_put_author")
+     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"PUT"}, name="api_put_entity")
      * @View(serializerGroups={"Default"})
      * @param Request $request
      * @param $entityName
@@ -125,13 +157,26 @@ class ApiController extends Controller implements ContainerAwareInterface {
     public function putAction(Request $request, $entityName, $id) {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
-        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        return [$request->getMethod() => $entityName, 'value' => $value];
+        $obj = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        if (!is_object($obj)) throw $this->createNotFoundException();
+        $factory = Forms::createFormFactory();
+        $form = $factory->createBuilder(EntityType::class, $obj, ['entity' => $entity, 'data_class' => $entity->getName()])->getForm();
+        $form->submit($request->request->all(), false);
+        $update = $form->getData();
+        $errors = $this->get('validator')->validate($update);
+        if ($errors->count() > 0) {
+            $error = $errors->get(0);
+            throw new BadRequestHttpException($error->getMessage());
+        }
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($update);
+        $em->flush();
+        return ['id' => $update->getId()];
     }
 
     /**
      * Delete entity
-     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"DELETE"}, name="api_delete_author")
+     * @Route("/{entityName}/{id}", requirements={"entityName"="[\w_]+", "id"="\d+"}, methods={"DELETE"}, name="api_delete_entity")
      * @View(serializerGroups={"Default"})
      * @param Request $request
      * @param $entityName
@@ -141,8 +186,12 @@ class ApiController extends Controller implements ContainerAwareInterface {
     public function deleteAction(Request $request, $entityName, $id) {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
-        $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        return [$request->getMethod() => $entityName, 'value' => $value];
+        $obj = $this->getDoctrine()->getRepository($entity->getName())->find($id);
+        if (!is_object($obj)) throw $this->createNotFoundException();
+        $em = $this->getDoctrine()->getManager();
+        $em->remove($obj);
+        $em->flush();
+        return '';
     }
 
     /**

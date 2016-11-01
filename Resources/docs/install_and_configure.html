@@ -100,7 +100,11 @@ fos_rest:
         default_engine: twig
     routing_loader:
         default_format: json
-        include_format: false</pre>
+        include_format: false
+    exception:
+        enabled: true
+        messages:
+            Symfony\Component\HttpKernel\Exception\BadRequestHttpException: true</pre>
     <p>
         This lines configure FOSRestBundle like:
         <ul>
