@@ -23,6 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 
 /**
  * Expose Bundle entity with RESTFull Api
@@ -113,7 +114,7 @@ class ApiController extends Controller implements ContainerAwareInterface {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
         $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        if (!is_object($value)) throw $this->createNotFoundException();
+        if (!is_object($value)) throw $this->createResourceNotFoundException($entityName);
         return $value;
     }
 
@@ -133,10 +134,8 @@ class ApiController extends Controller implements ContainerAwareInterface {
         $form->submit($request->request->all(), false);
         $insert = $form->getData();
         $errors = $this->get('validator')->validate($insert);
-        if ($errors->count() > 0) {
-            $error = $errors->get(0);
-            throw new BadRequestHttpException($error->getMessage());
-        }
+        if ($errors->count() > 0)
+            throw new BadRequestHttpException($error = $errors->get(0)->getMessage());
         $em = $this->getDoctrine()->getManager();
         $em->persist($insert);
         $em->flush();
@@ -156,16 +155,14 @@ class ApiController extends Controller implements ContainerAwareInterface {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
         $obj = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        if (!is_object($obj)) throw $this->createNotFoundException();
+        if (!is_object($obj)) throw $this->createResourceNotFoundException($entityName);
         $factory = Forms::createFormFactory();
         $form = $factory->createBuilder(EntityType::class, $obj, ['entity' => $entity, 'data_class' => $entity->getName()])->getForm();
         $form->submit($request->request->all(), false);
         $update = $form->getData();
         $errors = $this->get('validator')->validate($update);
-        if ($errors->count() > 0) {
-            $error = $errors->get(0);
-            throw new BadRequestHttpException($error->getMessage());
-        }
+        if ($errors->count() > 0)
+            throw new BadRequestHttpException($error = $errors->get(0)->getMessage());
         $em = $this->getDoctrine()->getManager();
         $em->persist($update);
         $em->flush();
@@ -185,7 +182,7 @@ class ApiController extends Controller implements ContainerAwareInterface {
         $entity = $this->getEntity($request, $entityName);
         $this->checkAllowedMethod($request->getMethod(), $entity);
         $obj = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        if (!is_object($obj)) throw $this->createNotFoundException();
+        if (!is_object($obj)) throw $this->createResourceNotFoundException($entityName);
         $em = $this->getDoctrine()->getManager();
         $em->remove($obj);
         $em->flush();
@@ -207,7 +204,7 @@ class ApiController extends Controller implements ContainerAwareInterface {
         if ($request->getMethod() != 'HEAD')
             $this->checkAllowedMethod($request->getMethod(), $entity);
         $value = $this->getDoctrine()->getRepository($entity->getName())->find($id);
-        if (!is_object($value)) throw $this->createNotFoundException();
+        if (!is_object($value)) throw $this->createResourceNotFoundException($entityName);
         $path = realpath($value->getAbsolutePath());
         switch ($request->getMethod()) {
             case 'HEAD':
@@ -234,6 +231,14 @@ class ApiController extends Controller implements ContainerAwareInterface {
      ******************************************************/
 
     /**
+     * @param $entityName
+     * @return ResourceNotFoundException
+     */
+    private function createResourceNotFoundException($entityName) {
+        return new ResourceNotFoundException("Resource not found: $entityName");
+    }
+
+    /**
      * Extract providers and entities from metadata
      *
      * @param ClassMetadataCollection $metadata
@@ -245,10 +250,8 @@ class ApiController extends Controller implements ContainerAwareInterface {
             $reflectionClass = new \ReflectionClass($meta->getName());
             $reader = new AnnotationReader();
             $annotation = $reader->getClassAnnotation($reflectionClass, Api::class);
-            if ($annotation && $annotation->path) {
-                //dump($meta->getName(), $annotation->path);
+            if ($annotation && $annotation->path)
                 $routes[$annotation->path] = $meta;
-            }
         }
         return $routes;
     }
@@ -256,19 +259,18 @@ class ApiController extends Controller implements ContainerAwareInterface {
     /**
      * Return entity for request path
      * @param Request $request
-     * @param $path
+     * @param $entityName
      * @return ClassMetadata
      */
-    private function getEntity(Request $request, $path) {
+    private function getEntity(Request $request, $entityName) {
         $controller = $request->attributes->get('_controller');
         $bundleName = preg_replace("/(\\w+).*/", "$1", $controller);
         $bundle = $this->kernel->getBundle($bundleName);
         $metadata = $this->manager->getBundleMetadata($bundle);
         $routes = $this->parseBundle($metadata);
-        if (isset($routes[$path])) {
-            return $routes[$path];
-        }
-        throw $this->createNotFoundException();
+        if (isset($routes[$entityName]))
+            return $routes[$entityName];
+        throw $this->createResourceNotFoundException($entityName);
     }
 
     /**
