@@ -3,6 +3,10 @@ AndroidGeneratorBundle
 
 This bundle provides a command to generate Android application and needed RESTApi based on your bundle definition.
 
+Requirements
+------------
+PHP7, Symfony 3.X (not 2.X or 4.X)
+
 How it works
 ------------
 
