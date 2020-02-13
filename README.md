@@ -5,7 +5,7 @@ This bundle provides a command to generate Android application and needed RESTAp
 
 Requirements
 ------------
-PHP7, Symfony 3.X or 4.X (not 2.X)
+PHP7, Symfony 3.X, 4.X, 5.X
 
 How it works
 ------------
